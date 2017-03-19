@@ -1,5 +1,7 @@
 package se.deepthot.playlistbot;
 
+import com.pengrad.telegrambot.TelegramBot;
+import com.pengrad.telegrambot.TelegramBotAdapter;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -22,5 +24,12 @@ public class Application {
         restTemplate.getMessageConverters().add(new FormHttpMessageConverter());
         return restTemplate;
     }
+
+    @Bean
+    public TelegramBot bot(){
+        return TelegramBotAdapter.build("269010008:AAG5ShYz3DxZgYGPDVsqY6BCmiObIb2tUW0");
+    }
+
+
 
 }
