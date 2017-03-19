@@ -10,6 +10,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Service;
 import se.deepthot.playlistbot.spotify.TrackId;
 import se.deepthot.playlistbot.spotify.playlist.PlaylistHandler;
+import se.deepthot.playlistbot.spotify.playlist.TrackGuesser;
+import se.deepthot.playlistbot.youtube.TrackResource;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
@@ -29,10 +31,13 @@ public class BotUpdatesListener implements UpdatesListener {
 
     private static final Logger logger = LoggerFactory.getLogger(BotUpdatesListener.class);
     private static final Pattern trackPattern = Pattern.compile("https://open.spotify.com/track/([\\w\\d]+)");
+    private static final Pattern youtubePattern = Pattern.compile(UpdateClassifier.YOUTUBE_TRACK_PATTERN);
 
     private final TelegramBot telegramBot;
     private final PlaylistHandler playlistHandler;
     private final UpdateClassifier updateClassifier;
+    private final TrackResource trackResource;
+    private final TrackGuesser trackGuesser;
 
     public String getPlaylistId() {
         return playlistId;
@@ -45,10 +50,12 @@ public class BotUpdatesListener implements UpdatesListener {
     private String playlistId;
 
     @Inject
-    public BotUpdatesListener(TelegramBot telegramBot, PlaylistHandler playlistHandler, UpdateClassifier updateClassifier) {
+    public BotUpdatesListener(TelegramBot telegramBot, PlaylistHandler playlistHandler, UpdateClassifier updateClassifier, TrackResource trackResource, TrackGuesser trackGuesser) {
         this.telegramBot = telegramBot;
         this.playlistHandler = playlistHandler;
         this.updateClassifier = updateClassifier;
+        this.trackResource = trackResource;
+        this.trackGuesser = trackGuesser;
     }
 
     @Override
@@ -59,6 +66,13 @@ public class BotUpdatesListener implements UpdatesListener {
                 switch (m.getType()) {
                     case SPOTIFY_LINK: {
                         handleSpotifyLink(m);
+                        break;
+                    }
+                    case YOUTUBE_LINK: {
+                        String trackId = extractYoutubeId(m.getText());
+                        String title = trackResource.getTrack(trackId);
+                        trackGuesser.guessTrack(title).ifPresent(id -> playlistHandler.addTracksToPlaylist(playlistId, singletonList(id)));
+                        break;
                     }
                     case PLAYLIST_COMMAND: {
                         telegramBot.execute(new SendMessage(m.getText(), "https://open.spotify.com/user/eruenion/playlist/" + playlistId));
@@ -80,6 +94,13 @@ public class BotUpdatesListener implements UpdatesListener {
         logger.info("Found track {}", trackId);
 
         playlistHandler.addTracksToPlaylist(playlistId, singletonList(TrackId.of(trackId)));
+    }
+
+    private String extractYoutubeId(String text){
+        Matcher matcher = youtubePattern.matcher(text);
+        //noinspection ResultOfMethodCallIgnored
+        matcher.find();
+        return matcher.group(4);
     }
 
 

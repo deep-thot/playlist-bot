@@ -27,10 +27,29 @@ public class Tracks {
         }
 
         private Track track;
+
+        private List<Artist> artists;
+
+        public List<Artist> getArtists() {
+            return artists;
+        }
+
+        public void setArtists(List<Artist> artists) {
+            this.artists = artists;
+        }
+
+        @Override
+        public String toString() {
+            return "TrackData{" +
+                    "track=" + track.getName() +
+                    ", artists=" + artists +
+                    ", id=" + track.getId() +
+                    '}';
+        }
     }
 
     static class Track {
-        public String getName() {
+        String getName() {
             return name;
         }
 
@@ -49,5 +68,22 @@ public class Tracks {
         }
 
         private String id;
+    }
+
+    static class Artist {
+        private String name;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
     }
 }
