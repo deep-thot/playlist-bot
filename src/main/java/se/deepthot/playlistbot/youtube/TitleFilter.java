@@ -21,7 +21,7 @@ public class TitleFilter {
                 .replaceAll("\\[.+]", "")
                 .replaceAll("\\*.+\\*", "")
                 .replaceFirst("(.+-.+)\\|(.+)", "$1")
-                .replaceAll("-", " ")
+                .replaceAll("[\\-&]", " ")
                 .replaceAll("[ ]{2,}", " ")
                 .trim();
     }
