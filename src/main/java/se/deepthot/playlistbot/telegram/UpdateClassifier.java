@@ -19,6 +19,10 @@ public class UpdateClassifier {
     static final String YOUTUBE_TRACK_PATTERN = "[\\s\\S]*https://((www|m)\\.youtube\\.com/watch\\?([\\w=&.]+)?v=|youtu\\.be/)([\\w\\d\\-]{11})[\\s\\S]*";
 
     IncomingMessage classify(Update update){
+        if(update.message() == null || update.message().entities() == null){
+            logger.info("Ignoring update {}", update);
+            return IncomingMessage.unknown();
+        }
         if(containsSpotifyTrack(update)){
             return IncomingMessage.spotify(update.message().text());
         }
@@ -38,13 +42,12 @@ public class UpdateClassifier {
     }
 
     private boolean isUrl(Update u) {
-        return u.message().entities() != null &&
-                stream(u.message().entities())
+        return stream(u.message().entities())
                         .anyMatch(m -> m.type() == MessageEntity.Type.url);
     }
 
     private boolean isBotCommand(Update u){
-        return u.message().entities() != null && stream(u.message().entities()).anyMatch(m -> m.type() == MessageEntity.Type.bot_command);
+        return stream(u.message().entities()).anyMatch(m -> m.type() == MessageEntity.Type.bot_command);
     }
 
     private boolean isYoutubeTrack(Update u){
