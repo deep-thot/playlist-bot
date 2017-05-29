@@ -43,12 +43,6 @@ public class TrackResource {
         }
     }
 
-    public static void main(String[] args) {
-        TrackResource trackResource = new TrackResource(new TitleFilter());
-        trackResource.setApiKey("AIzaSyCIY2HOzIpjbLs-bf2s2V136Y7bxRzyk44");
-        System.out.println(trackResource.getTrack("oLdUdnk5za8"));
-    }
-
     public String getApiKey() {
         return apiKey;
     }

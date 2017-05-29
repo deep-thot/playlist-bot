@@ -8,12 +8,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
+import se.deepthot.playlistbot.telegram.TelegramConfig;
 
 /**
  * Created by Eruenion on 2017-03-07.
  */
 @SpringBootApplication
-@ConfigurationProperties("telegram")
 public class Application {
 
     private String botToken;
@@ -30,8 +30,8 @@ public class Application {
     }
 
     @Bean
-    public TelegramBot bot(){
-        return TelegramBotAdapter.build(botToken);
+    public TelegramBot bot(TelegramConfig telegramConfig){
+        return TelegramBotAdapter.buildDebug(telegramConfig.getBotToken());
     }
 
 
