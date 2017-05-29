@@ -17,6 +17,8 @@ public class PlayListResponse {
 
     private String name;
 
+    private String id;
+
     Tracks getTracks() {
         return tracks;
     }
@@ -26,4 +28,12 @@ public class PlayListResponse {
     }
 
     private Tracks tracks;
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
 }

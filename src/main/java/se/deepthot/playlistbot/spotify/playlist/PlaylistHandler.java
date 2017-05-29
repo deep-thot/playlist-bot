@@ -1,5 +1,7 @@
 package se.deepthot.playlistbot.spotify.playlist;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
@@ -66,6 +68,14 @@ public class PlaylistHandler {
         }
     }
 
+    public PlayListResponse createPlaylist(String name){
+        ResponseEntity<PlayListResponse> result = restTemplate.exchange(RequestEntity.post(URI.create("https://api.spotify.com/v1/users/eruenion/playlists")).contentType(MediaType.APPLICATION_JSON).body(new CreatePlaylistRequest(name, false)), PlayListResponse.class);
+        verifyResult(result);
+        PlayListResponse body = result.getBody();
+        logger.info("Created new playlist \"{}\" ({})", body.getName(), body.getId());
+        return body;
+    }
+
     private List<TrackId> filterNewTracks(String playlistId, List<TrackId> trackIds) {
         PlayListResponse playlist = getPlaylist(playlistId);
         Set<String> existingTracks = playlist.getTracks().getItems().stream().map(Tracks.TrackData::getTrack).map(Tracks.Track::getId).collect(toSet());
@@ -78,6 +88,18 @@ public class PlaylistHandler {
         verifyResult(result);
         return result.getBody();
     }
+
+    public List<PlayListResponse> getAllPlaylistsForPrefix(String prefix){
+        return listPlayLists().getItems().stream().filter(p -> p.getName().startsWith(prefix)).collect(toList());
+    }
+
+    private PlaylistListResponse listPlayLists(){
+        ResponseEntity<PlaylistListResponse> result = restTemplate.exchange(RequestEntity.get(URI.create("https://api.spotify.com/v1/users/eruenion/playlists")).header("Authorization", authenticationService.getAuthHeader()).build(), PlaylistListResponse.class);
+        verifyResult(result);
+        return result.getBody();
+    }
+
+
 
     private void verifyResult(ResponseEntity<?> result) {
         if(!result.getStatusCode().is2xxSuccessful()){

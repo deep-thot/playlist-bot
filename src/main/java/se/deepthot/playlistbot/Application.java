@@ -4,6 +4,7 @@ import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.TelegramBotAdapter;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
@@ -12,7 +13,10 @@ import org.springframework.web.client.RestTemplate;
  * Created by Eruenion on 2017-03-07.
  */
 @SpringBootApplication
+@ConfigurationProperties("telegram")
 public class Application {
+
+    private String botToken;
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
@@ -27,7 +31,7 @@ public class Application {
 
     @Bean
     public TelegramBot bot(){
-        return TelegramBotAdapter.build("269010008:AAG5ShYz3DxZgYGPDVsqY6BCmiObIb2tUW0");
+        return TelegramBotAdapter.build(botToken);
     }
 
 
