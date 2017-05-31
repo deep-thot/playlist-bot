@@ -1,7 +1,5 @@
 package se.deepthot.playlistbot.spotify.playlist;
 
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
@@ -15,9 +13,12 @@ import se.deepthot.playlistbot.spotify.TrackId;
 import javax.inject.Inject;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
 /**
@@ -68,8 +69,12 @@ public class PlaylistHandler {
         }
     }
 
+    private void addTrackToPlaylist(String playlistId, String trackId){
+        addTracksToPlaylist(playlistId, singletonList(TrackId.of(trackId)));
+    }
+
     public PlayListResponse createPlaylist(String name){
-        ResponseEntity<PlayListResponse> result = restTemplate.exchange(RequestEntity.post(URI.create("https://api.spotify.com/v1/users/eruenion/playlists")).contentType(MediaType.APPLICATION_JSON).body(new CreatePlaylistRequest(name, false)), PlayListResponse.class);
+        ResponseEntity<PlayListResponse> result = restTemplate.exchange(RequestEntity.post(URI.create("https://api.spotify.com/v1/users/eruenion/playlists")).contentType(MediaType.APPLICATION_JSON).header("Authorization", authenticationService.getAuthHeader()).body(new CreatePlaylistRequest(name, false)), PlayListResponse.class);
         verifyResult(result);
         PlayListResponse body = result.getBody();
         logger.info("Created new playlist \"{}\" ({})", body.getName(), body.getId());
@@ -77,9 +82,33 @@ public class PlaylistHandler {
     }
 
     private List<TrackId> filterNewTracks(String playlistId, List<TrackId> trackIds) {
-        PlayListResponse playlist = getPlaylist(playlistId);
-        Set<String> existingTracks = playlist.getTracks().getItems().stream().map(Tracks.TrackData::getTrack).map(Tracks.Track::getId).collect(toSet());
+        Set<String> existingTracks = getAllTrackIds(playlistId);
         return trackIds.stream().filter(t -> !existingTracks.contains(t.getId())).collect(toList());
+    }
+
+    private Set<String> getTrackIds(Tracks tracks) {
+        return tracks.getItems().stream().map(Tracks.TrackData::getTrack).map(Tracks.Track::getId).collect(toSet());
+    }
+
+    private Set<String> getAllTrackIds(String playlistId){
+        PlayListResponse playlist = getPlaylist(playlistId);
+        String next = playlist.getTracks().getNext();
+        Set<String> result = getTrackIds(playlist.getTracks());
+        while(next != null){
+            Tracks response = performGet(next, Tracks.class).getBody();
+            result.addAll(getTrackIds(response));
+            next = response.getNext();
+        }
+        return result;
+    }
+
+    private <T> ResponseEntity<T> performGet(String next, Class<T> responseType) {
+        try {
+            return restTemplate.exchange(RequestEntity.get(URI.create(next)).header("Authorization", authenticationService.getAuthHeader()).build(), responseType);
+        } catch(HttpClientErrorException e){
+            logger.warn("Request returned status {}: {}",e.getStatusCode(), e.getResponseBodyAsString());
+            return new ResponseEntity<T>(e.getStatusCode());
+        }
     }
 
     public PlayListResponse getPlaylist(String playlistId){
@@ -89,8 +118,18 @@ public class PlaylistHandler {
         return result.getBody();
     }
 
-    public List<PlayListResponse> getAllPlaylistsForPrefix(String prefix){
-        return listPlayLists().getItems().stream().filter(p -> p.getName().startsWith(prefix)).collect(toList());
+    public String getPlaylistByName(String name){
+        return getPlaylists().get(name);
+    }
+
+    public void addTrackToPlaylists(String trackId, List<String> playlistNames){
+        logger.info("Adding to playlists {}", playlistNames);
+        Map<String, String> playlistMap = getPlaylists();
+        playlistNames.stream().map(name -> playlistMap.computeIfAbsent(name,  n-> createPlaylist(n).getId())).forEach(id -> addTrackToPlaylist(id, trackId));
+    }
+
+    private Map<String, String> getPlaylists() {
+        return listPlayLists().getItems().stream().collect(toMap(PlayListResponse::getName, PlayListResponse::getId));
     }
 
     private PlaylistListResponse listPlayLists(){

@@ -32,9 +32,13 @@ public class IncomingMessage {
     }
 
     public static IncomingMessage spotify(String text, String userName){
-        List<String> hashTags = getHashTags(text);
 
-        return new IncomingMessage(Type.SPOTIFY_LINK, text, hashTags, userName);
+        return createMessage(text, userName, Type.SPOTIFY_LINK);
+    }
+
+    private static IncomingMessage createMessage(String text, String userName, Type type) {
+        List<String> hashTags = getHashTags(text);
+        return new IncomingMessage(type, text, hashTags, userName);
     }
 
     private static List<String> getHashTags(String text) {
@@ -47,7 +51,7 @@ public class IncomingMessage {
     }
 
     public static IncomingMessage youtube(String text, String userName){
-        return new IncomingMessage(Type.YOUTUBE_LINK, text, emptyList(), userName);
+        return createMessage(text, userName, Type.YOUTUBE_LINK);
     }
 
     static IncomingMessage playlistCommand(String chatId, String userName){
@@ -64,6 +68,14 @@ public class IncomingMessage {
 
     String getText() {
         return text;
+    }
+
+    public List<String> getHashTags() {
+        return hashTags;
+    }
+
+    public String getUserName() {
+        return "@" + userName;
     }
 
     enum Type{

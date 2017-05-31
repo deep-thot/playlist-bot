@@ -1,8 +1,10 @@
 package se.deepthot.playlistbot.telegram;
 
+import com.google.common.collect.Sets;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.UpdatesListener;
 import com.pengrad.telegrambot.model.Update;
+import com.pengrad.telegrambot.model.request.ParseMode;
 import com.pengrad.telegrambot.request.SendMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,11 +18,16 @@ import se.deepthot.playlistbot.youtube.TrackResource;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 /**
  * Created by Eruenion on 2017-03-10.
@@ -32,6 +39,9 @@ public class BotUpdatesListener implements UpdatesListener {
     private static final Logger logger = LoggerFactory.getLogger(BotUpdatesListener.class);
     private static final Pattern trackPattern = Pattern.compile("https://open.spotify.com/track/([\\w\\d]+)");
     private static final Pattern youtubePattern = Pattern.compile(UpdateClassifier.YOUTUBE_TRACK_PATTERN);
+
+    private static final Set<String> playlistHashTagPatterns = Sets.newHashSet("#30daysongchallenge", "#day[\\d]{2}");
+    public static final String PLAYLIST_PREFIX = "Musiksnack - ";
 
     private final TelegramBot telegramBot;
     private final PlaylistHandler playlistHandler;
@@ -71,11 +81,13 @@ public class BotUpdatesListener implements UpdatesListener {
                     case YOUTUBE_LINK: {
                         String trackId = extractYoutubeId(m.getText());
                         String title = trackResource.getTrack(trackId);
-                        trackGuesser.guessTrack(title).ifPresent(id -> playlistHandler.addTracksToPlaylist(playlistId, singletonList(id)));
+                        trackGuesser.guessTrack(title).ifPresent(id -> addToPlaylists(m, id.getId()));
                         break;
                     }
                     case PLAYLIST_COMMAND: {
-                        telegramBot.execute(new SendMessage(m.getText(), "https://open.spotify.com/user/eruenion/playlist/" + playlistId));
+                        String playlist = playlistHandler.getPlaylistByName(PLAYLIST_PREFIX + m.getUserName());
+                        String text = getPersonalPLaylist(playlist);
+                        telegramBot.execute(new SendMessage(m.getText(), text + "\n\n hela kanalens playlist med _allt_ hittar du på https://open.spotify.com/user/eruenion/playlist/" + playlistId).parseMode(ParseMode.Markdown));
                     }
                 }
             });
@@ -86,6 +98,16 @@ public class BotUpdatesListener implements UpdatesListener {
         return CONFIRMED_UPDATES_ALL;
     }
 
+    private String getPersonalPLaylist(String playlist) {
+        String text;
+        if(playlist == null){
+            text = "Du har ingen playlist än. Skicka några youtube eller spotify-länkar till mig först.";
+        } else {
+            text = "Din playlist hittar du på https://open.spotify.com/user/eruenion/playlist/" + playlist;
+        }
+        return text;
+    }
+
     private void handleSpotifyLink(IncomingMessage m) {
         Matcher matcher = trackPattern.matcher(m.getText());
         //noinspection ResultOfMethodCallIgnored
@@ -93,7 +115,28 @@ public class BotUpdatesListener implements UpdatesListener {
         String trackId = matcher.group(1);
         logger.info("Found track {}", trackId);
 
-        playlistHandler.addTracksToPlaylist(playlistId, singletonList(TrackId.of(trackId)));
+        addToPlaylists(m, trackId);
+    }
+
+    private void addToPlaylists(IncomingMessage m, String trackId) {
+        List<String> playlistNames = Stream.concat(filterHashTags(m.getHashTags()), Stream.of(m.getUserName())).map(PLAYLIST_PREFIX::concat).collect(toList());
+
+        playlistHandler.addTrackToPlaylists(trackId, playlistNames);
+
+
+        addTrack(trackId, playlistId);
+    }
+
+    private static Stream<String> filterHashTags(List<String> hashTags) {
+        return hashTags.stream().distinct().filter(tag -> playlistHashTagPatterns.stream().anyMatch(tag::matches));
+    }
+
+    private String getOrCreatePlaylist(Map<String, String> playlists, String tag) {
+        return playlists.computeIfAbsent(PLAYLIST_PREFIX + tag, name -> playlistHandler.createPlaylist(name).getId());
+    }
+
+    private void addTrack(String trackId, String playListId) {
+        playlistHandler.addTracksToPlaylist(playListId, singletonList(TrackId.of(trackId)));
     }
 
     private String extractYoutubeId(String text){
@@ -109,5 +152,6 @@ public class BotUpdatesListener implements UpdatesListener {
         telegramBot.setUpdatesListener(this);
         logger.info("Listening...");
     }
+
 
 }

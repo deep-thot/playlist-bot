@@ -7,6 +7,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PlayListResponse {
+    private String name;
+    private String id;
+    private Tracks tracks;
+
     public String getName() {
         return name;
     }
@@ -15,10 +19,6 @@ public class PlayListResponse {
         this.name = name;
     }
 
-    private String name;
-
-    private String id;
-
     Tracks getTracks() {
         return tracks;
     }
@@ -26,8 +26,6 @@ public class PlayListResponse {
     public void setTracks(Tracks tracks) {
         this.tracks = tracks;
     }
-
-    private Tracks tracks;
 
     public String getId() {
         return id;
