@@ -74,7 +74,7 @@ public class PlaylistHandler {
     }
 
     public PlayListResponse createPlaylist(String name){
-        ResponseEntity<PlayListResponse> result = restTemplate.exchange(RequestEntity.post(URI.create("https://api.spotify.com/v1/users/eruenion/playlists")).contentType(MediaType.APPLICATION_JSON).header("Authorization", authenticationService.getAuthHeader()).body(new CreatePlaylistRequest(name, false)), PlayListResponse.class);
+        ResponseEntity<PlayListResponse> result = restTemplate.exchange(RequestEntity.post(URI.create("https://api.spotify.com/v1/users/eruenion/playlists")).contentType(MediaType.APPLICATION_JSON).header("Authorization", authenticationService.getAuthHeader()).body(new CreatePlaylistRequest(name, true)), PlayListResponse.class);
         verifyResult(result);
         PlayListResponse body = result.getBody();
         logger.info("Created new playlist \"{}\" ({})", body.getName(), body.getId());
