@@ -8,6 +8,7 @@ import java.util.List;
 public class PlaylistListResponse {
 
     private List<PlayListResponse> items;
+    private String next;
 
     public List<PlayListResponse> getItems() {
         return items;
@@ -15,5 +16,13 @@ public class PlaylistListResponse {
 
     public void setItems(List<PlayListResponse> items) {
         this.items = items;
+    }
+
+    public String getNext() {
+        return next;
+    }
+
+    public void setNext(String next) {
+        this.next = next;
     }
 }

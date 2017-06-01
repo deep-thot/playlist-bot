@@ -12,6 +12,7 @@ import se.deepthot.playlistbot.spotify.TrackId;
 
 import javax.inject.Inject;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -129,13 +130,19 @@ public class PlaylistHandler {
     }
 
     private Map<String, String> getPlaylists() {
-        return listPlayLists().getItems().stream().collect(toMap(PlayListResponse::getName, PlayListResponse::getId));
+        return listPlayLists().stream().collect(toMap(PlayListResponse::getName, PlayListResponse::getId));
     }
 
-    private PlaylistListResponse listPlayLists(){
-        ResponseEntity<PlaylistListResponse> result = restTemplate.exchange(RequestEntity.get(URI.create("https://api.spotify.com/v1/users/eruenion/playlists")).header("Authorization", authenticationService.getAuthHeader()).build(), PlaylistListResponse.class);
-        verifyResult(result);
-        return result.getBody();
+    private List<PlayListResponse> listPlayLists(){
+        PlaylistListResponse list = performGet("https://api.spotify.com/v1/users/eruenion/playlists", PlaylistListResponse.class).getBody();
+        List<PlayListResponse> result = list.getItems();
+        String next = list.getNext();
+        while(next != null){
+            PlaylistListResponse playlistList = performGet(next, PlaylistListResponse.class).getBody();
+            result.addAll(playlistList.getItems());
+            next = playlistList.getNext();
+        }
+        return result;
     }
 
 
