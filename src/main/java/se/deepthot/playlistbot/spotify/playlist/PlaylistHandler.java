@@ -130,7 +130,7 @@ public class PlaylistHandler {
     }
 
     private Map<String, String> getPlaylists() {
-        return listPlayLists().stream().collect(toMap(PlayListResponse::getName, PlayListResponse::getId));
+        return listPlayLists().stream().distinct().collect(toMap(PlayListResponse::getName, PlayListResponse::getId));
     }
 
     private List<PlayListResponse> listPlayLists(){
