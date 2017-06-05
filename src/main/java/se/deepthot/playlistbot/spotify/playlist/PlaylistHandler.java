@@ -16,9 +16,11 @@ import javax.inject.Inject;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
@@ -32,9 +34,12 @@ public class PlaylistHandler {
     private final RestTemplate restTemplate;
    private final AuthenticationService authenticationService;
 
+
+
    private static final Logger logger = LoggerFactory.getLogger(PlaylistHandler.class);
     private final LoadingCache<String, List<PlayListResponse>> playlistCache;
     private final LoadingCache<String, Set<String>> tracksCache;
+    private final ScheduledExecutorService retryScheduler;
 
 
     @Inject
@@ -43,6 +48,7 @@ public class PlaylistHandler {
         this.authenticationService = authenticationService;
         this.playlistCache = Caffeine.newBuilder().expireAfterWrite(2, TimeUnit.HOURS).build(s -> listPlayLists());
         tracksCache = Caffeine.newBuilder().expireAfterWrite(2, TimeUnit.HOURS).build(this::getAllTrackIds);
+        retryScheduler = Executors.newSingleThreadScheduledExecutor();
     }
 
 
@@ -54,18 +60,39 @@ public class PlaylistHandler {
         LinkedMultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
         headers.add("Authorization", authenticationService.getAuthHeader());
         HttpEntity<AddTracksRequest> entity = new HttpEntity<>(new AddTracksRequest(singletonList(TrackId.of(trackId).getSpotifyUrl())), headers);
-        try {
-            ResponseEntity<AddTracksResponse> result = restTemplate.exchange("https://api.spotify.com/v1/users/eruenion/playlists/{playlistId}/tracks", HttpMethod.POST, entity, AddTracksResponse.class, playlistId);
-            verifyResult(result);
-            logger.info("Added track {}", trackId);
-            tracksCache.get(playlistId).add(trackId);
-        } catch(HttpClientErrorException e){
-            logger.error("Error in request, status {}, message {}", e.getStatusCode(), e.getResponseBodyAsString());
+        performWithRetry(() -> restTemplate.exchange("https://api.spotify.com/v1/users/eruenion/playlists/{playlistId}/tracks", HttpMethod.POST, entity, AddTracksResponse.class, playlistId), "Add track " + trackId + " to playlist " + playlistId);
+        logger.info("Added track {}", trackId);
+        tracksCache.get(playlistId).add(trackId);
+
+    }
+
+    private <T> ResponseEntity<T> performWithRetry(Callable<ResponseEntity<T>> exchange, String title){
+        try{
+            return exchange.call();
+        }
+        catch(HttpClientErrorException e){
+            if(e.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS){
+                logger.info("Too many requests when performing {}", title);
+                Optional<Integer> retryInSeconds = e.getResponseHeaders().getOrDefault("Retry-After", emptyList()).stream().findFirst().map(Integer::parseInt);
+                return retryInSeconds.map(retry -> {
+                    logger.info("Retrying in {} s", retry);
+                    try {
+                        return retryScheduler.schedule(exchange, retry, TimeUnit.SECONDS).get(retry*2, TimeUnit.SECONDS);
+                    } catch (InterruptedException | ExecutionException | TimeoutException e1) {
+                        throw new RuntimeException(e1);
+                    }
+                }).orElse(new ResponseEntity<>(e.getStatusCode()));
+            } else {
+                logger.warn("Request returned status {}: {}. Headers: {}",e.getStatusCode(), e.getResponseBodyAsString(), e.getResponseHeaders());
+                return new ResponseEntity<>(e.getStatusCode());
+            }
+        } catch(Exception e){
+            throw new RuntimeException(e);
         }
     }
 
     private PlayListResponse createPlaylist(String name){
-        ResponseEntity<PlayListResponse> result = restTemplate.exchange(RequestEntity.post(URI.create("https://api.spotify.com/v1/users/eruenion/playlists")).contentType(MediaType.APPLICATION_JSON).header("Authorization", authenticationService.getAuthHeader()).body(new CreatePlaylistRequest(name, true)), PlayListResponse.class);
+        ResponseEntity<PlayListResponse> result = performWithRetry(() -> restTemplate.exchange(RequestEntity.post(URI.create("https://api.spotify.com/v1/users/eruenion/playlists")).contentType(MediaType.APPLICATION_JSON).header("Authorization", authenticationService.getAuthHeader()).body(new CreatePlaylistRequest(name, true)), PlayListResponse.class), "Create playlist " + name);
         verifyResult(result);
         PlayListResponse body = result.getBody();
         logger.info("Created new playlist \"{}\" ({})", body.getName(), body.getId());
@@ -82,24 +109,19 @@ public class PlaylistHandler {
         String next = playlist.getTracks().getNext();
         Set<String> result = getTrackIds(playlist.getTracks());
         while(next != null){
-            Tracks response = performGet(next, Tracks.class).getBody();
+            Tracks response = performGet(next, Tracks.class, "Loading tracks for " + playlistId).getBody();
             result.addAll(getTrackIds(response));
             next = response.getNext();
         }
         return result;
     }
 
-    private <T> ResponseEntity<T> performGet(String url, Class<T> responseType) {
-        try {
-            return restTemplate.exchange(RequestEntity.get(URI.create(url)).header("Authorization", authenticationService.getAuthHeader()).build(), responseType);
-        } catch(HttpClientErrorException e){
-            logger.warn("Request returned status {}: {}. Headers: {}",e.getStatusCode(), e.getResponseBodyAsString(), e.getResponseHeaders());
-            return new ResponseEntity<>(e.getStatusCode());
-        }
+    private <T> ResponseEntity<T> performGet(String url, Class<T> responseType, String title) {
+        return performWithRetry(() -> restTemplate.exchange(RequestEntity.get(URI.create(url)).header("Authorization", authenticationService.getAuthHeader()).build(), responseType), title);
     }
 
     public PlayListResponse getPlaylist(String playlistId){
-        ResponseEntity<PlayListResponse> result = performGet("https://api.spotify.com/v1/users/eruenion/playlists/" + playlistId, PlayListResponse.class);
+        ResponseEntity<PlayListResponse> result = performGet("https://api.spotify.com/v1/users/eruenion/playlists/" + playlistId, PlayListResponse.class, "loading playlist " + playlistId);
         verifyResult(result);
         return result.getBody();
     }
@@ -119,11 +141,11 @@ public class PlaylistHandler {
     }
 
     private List<PlayListResponse> listPlayLists(){
-        PlaylistListResponse list = performGet("https://api.spotify.com/v1/users/eruenion/playlists", PlaylistListResponse.class).getBody();
+        PlaylistListResponse list = performGet("https://api.spotify.com/v1/users/eruenion/playlists", PlaylistListResponse.class, "Initial get all playlists").getBody();
         List<PlayListResponse> result = list.getItems();
         String next = list.getNext();
         while(next != null){
-            PlaylistListResponse playlistList = performGet(next, PlaylistListResponse.class).getBody();
+            PlaylistListResponse playlistList = performGet(next, PlaylistListResponse.class, "Getting all playlists (contd.)").getBody();
             result.addAll(playlistList.getItems());
             next = playlistList.getNext();
         }
