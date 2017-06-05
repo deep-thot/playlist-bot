@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Service;
-import se.deepthot.playlistbot.spotify.TrackId;
 import se.deepthot.playlistbot.spotify.playlist.PlaylistHandler;
 import se.deepthot.playlistbot.spotify.playlist.TrackGuesser;
 import se.deepthot.playlistbot.youtube.TrackResource;
@@ -18,16 +17,12 @@ import se.deepthot.playlistbot.youtube.TrackResource;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
 
 /**
  * Created by Eruenion on 2017-03-10.
@@ -41,7 +36,7 @@ public class BotUpdatesListener implements UpdatesListener {
     private static final Pattern youtubePattern = Pattern.compile(UpdateClassifier.YOUTUBE_TRACK_PATTERN);
 
     private static final Set<String> playlistHashTagPatterns = Sets.newHashSet("#30daysongchallenge", "#day[\\d]{2}");
-    public static final String PLAYLIST_PREFIX = "Musiksnack - ";
+    private static final String PLAYLIST_PREFIX = "Musiksnack - ";
 
     private final TelegramBot telegramBot;
     private final PlaylistHandler playlistHandler;
@@ -131,12 +126,9 @@ public class BotUpdatesListener implements UpdatesListener {
         return hashTags.stream().distinct().filter(tag -> playlistHashTagPatterns.stream().anyMatch(tag::matches));
     }
 
-    private String getOrCreatePlaylist(Map<String, String> playlists, String tag) {
-        return playlists.computeIfAbsent(PLAYLIST_PREFIX + tag, name -> playlistHandler.createPlaylist(name).getId());
-    }
 
     private void addTrack(String trackId, String playListId) {
-        playlistHandler.addTracksToPlaylist(playListId, singletonList(TrackId.of(trackId)));
+        playlistHandler.addTrackToPlaylist(playListId, trackId);
     }
 
     private String extractYoutubeId(String text){

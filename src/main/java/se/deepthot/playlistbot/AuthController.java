@@ -2,16 +2,14 @@ package se.deepthot.playlistbot;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
-import se.deepthot.playlistbot.spotify.TrackId;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import se.deepthot.playlistbot.spotify.playlist.PlayListResponse;
 import se.deepthot.playlistbot.spotify.playlist.PlaylistHandler;
 
 import javax.inject.Inject;
-import java.util.List;
-
-import static java.util.stream.Collectors.toList;
 
 /**
  * Created by Eruenion on 2017-03-07.
@@ -37,21 +35,12 @@ public class AuthController {
     }
 
 
-    @GetMapping("/test-rename/{playlistname}")
-    @ResponseStatus(HttpStatus.OK)
-    public void testRename(@PathVariable String playlistname){
-        playlistHandler.renamePlaylist(playlistname);
-    }
+
 
     @GetMapping("/playlist")
     public PlayListResponse getPlayList(){
         return playlistHandler.getPlaylist(playlistId);
     }
 
-    @GetMapping("/addtracks")
-    @ResponseStatus(HttpStatus.OK)
-    public void addTracks(@RequestParam List<String> trackIds) {
-        List<TrackId> tracks = trackIds.stream().map(TrackId::of).collect(toList());
-        playlistHandler.addTracksToPlaylist(playlistId, tracks);
-    }
+
 }

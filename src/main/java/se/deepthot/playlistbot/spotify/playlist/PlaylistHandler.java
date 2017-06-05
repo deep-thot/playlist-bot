@@ -1,5 +1,7 @@
 package se.deepthot.playlistbot.spotify.playlist;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
@@ -15,6 +17,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.*;
@@ -25,31 +28,24 @@ import static java.util.stream.Collectors.*;
 @Service
 public class PlaylistHandler {
 
-   private final PlaylistConfig playlistConfig;
-   private final RestTemplate restTemplate;
+    private final RestTemplate restTemplate;
    private final AuthenticationService authenticationService;
 
    private static final Logger logger = LoggerFactory.getLogger(PlaylistHandler.class);
+    private final LoadingCache<String, List<PlayListResponse>> playlistCache;
+    private final LoadingCache<String, Set<String>> tracksCache;
 
 
-   @Inject
-    public PlaylistHandler(PlaylistConfig playlistConfig, RestTemplate restTemplate, AuthenticationService authenticationService) {
-        this.playlistConfig = playlistConfig;
+    @Inject
+    public PlaylistHandler(RestTemplate restTemplate, AuthenticationService authenticationService) {
         this.restTemplate = restTemplate;
-       this.authenticationService = authenticationService;
-   }
-
-    public void renamePlaylist(String name){
-        ResponseEntity<Void> result = restTemplate.exchange(RequestEntity
-                .put(URI.create("https://api.spotify.com/v1/users/eruenion/playlists/" + playlistConfig.getPlaylistId()))
-                .header("Authorization", authenticationService.getAuthHeader())
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(new RenamePlaylistRequest(name)), Void.class);
-        logger.info("Renamed playlist");
-
+        this.authenticationService = authenticationService;
+        this.playlistCache = Caffeine.newBuilder().expireAfterWrite(2, TimeUnit.HOURS).build(s -> listPlayLists());
+        tracksCache = Caffeine.newBuilder().expireAfterWrite(2, TimeUnit.HOURS).build(this::getAllTrackIds);
     }
 
-    public void addTracksToPlaylist(String playlistId, List<TrackId> trackIds){
+
+    private void addTracksToPlaylist(String playlistId, List<TrackId> trackIds){
         List<TrackId> nonDuplicates =  filterNewTracks(playlistId, trackIds);
         if(nonDuplicates.isEmpty()){
             logger.info("No new tracks to add. ({} already exist in playlist)", trackIds);
@@ -67,20 +63,22 @@ public class PlaylistHandler {
         }
     }
 
-    private void addTrackToPlaylist(String playlistId, String trackId){
+    public void addTrackToPlaylist(String playlistId, String trackId){
         addTracksToPlaylist(playlistId, singletonList(TrackId.of(trackId)));
+        tracksCache.invalidate(playlistId);
     }
 
-    public PlayListResponse createPlaylist(String name){
+    private PlayListResponse createPlaylist(String name){
         ResponseEntity<PlayListResponse> result = restTemplate.exchange(RequestEntity.post(URI.create("https://api.spotify.com/v1/users/eruenion/playlists")).contentType(MediaType.APPLICATION_JSON).header("Authorization", authenticationService.getAuthHeader()).body(new CreatePlaylistRequest(name, true)), PlayListResponse.class);
         verifyResult(result);
         PlayListResponse body = result.getBody();
         logger.info("Created new playlist \"{}\" ({})", body.getName(), body.getId());
+        playlistCache.invalidateAll();
         return body;
     }
 
     private List<TrackId> filterNewTracks(String playlistId, List<TrackId> trackIds) {
-        Set<String> existingTracks = getAllTrackIds(playlistId);
+        Set<String> existingTracks = tracksCache.get(playlistId);
         return trackIds.stream().filter(t -> !existingTracks.contains(t.getId())).collect(toList());
     }
 
@@ -126,7 +124,7 @@ public class PlaylistHandler {
     }
 
     private Map<String, String> getPlaylists() {
-        return listPlayLists().stream().distinct().collect(toMap(PlayListResponse::getName, PlayListResponse::getId));
+        return playlistCache.get("IneedSomekey").stream().distinct().collect(toMap(PlayListResponse::getName, PlayListResponse::getId));
     }
 
     private List<PlayListResponse> listPlayLists(){
