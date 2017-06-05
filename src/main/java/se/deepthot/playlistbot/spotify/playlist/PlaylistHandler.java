@@ -20,7 +20,8 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * Created by Eruenion on 2017-03-08.
@@ -45,27 +46,22 @@ public class PlaylistHandler {
     }
 
 
-    private void addTracksToPlaylist(String playlistId, List<TrackId> trackIds){
-        List<TrackId> nonDuplicates =  filterNewTracks(playlistId, trackIds);
-        if(nonDuplicates.isEmpty()){
-            logger.info("No new tracks to add. ({} already exist in playlist)", trackIds);
+    public void addTrackToPlaylist(String playlistId, String trackId){
+        if(tracksCache.get(playlistId).contains(trackId)){
+            logger.info("No new tracks to add. ({} already exist in playlist)", trackId);
             return;
         }
         LinkedMultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
         headers.add("Authorization", authenticationService.getAuthHeader());
-        HttpEntity<AddTracksRequest> entity = new HttpEntity<>(new AddTracksRequest(nonDuplicates.stream().map(TrackId::getSpotifyUrl).collect(toList())), headers);
+        HttpEntity<AddTracksRequest> entity = new HttpEntity<>(new AddTracksRequest(singletonList(TrackId.of(trackId).getSpotifyUrl())), headers);
         try {
             ResponseEntity<AddTracksResponse> result = restTemplate.exchange("https://api.spotify.com/v1/users/eruenion/playlists/{playlistId}/tracks", HttpMethod.POST, entity, AddTracksResponse.class, playlistId);
             verifyResult(result);
-            logger.info("Added tracks {}", trackIds);
+            logger.info("Added track {}", trackId);
+            tracksCache.get(playlistId).add(trackId);
         } catch(HttpClientErrorException e){
             logger.error("Error in request, status {}, message {}", e.getStatusCode(), e.getResponseBodyAsString());
         }
-    }
-
-    public void addTrackToPlaylist(String playlistId, String trackId){
-        addTracksToPlaylist(playlistId, singletonList(TrackId.of(trackId)));
-        tracksCache.invalidate(playlistId);
     }
 
     private PlayListResponse createPlaylist(String name){
@@ -75,11 +71,6 @@ public class PlaylistHandler {
         logger.info("Created new playlist \"{}\" ({})", body.getName(), body.getId());
         playlistCache.invalidateAll();
         return body;
-    }
-
-    private List<TrackId> filterNewTracks(String playlistId, List<TrackId> trackIds) {
-        Set<String> existingTracks = tracksCache.get(playlistId);
-        return trackIds.stream().filter(t -> !existingTracks.contains(t.getId())).collect(toList());
     }
 
     private Set<String> getTrackIds(Tracks tracks) {
