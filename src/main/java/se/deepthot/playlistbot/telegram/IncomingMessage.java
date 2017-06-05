@@ -50,7 +50,7 @@ public class IncomingMessage {
         return hashTags;
     }
 
-    public static IncomingMessage youtube(String text, String userName){
+    static IncomingMessage youtube(String text, String userName){
         return createMessage(text, userName, Type.YOUTUBE_LINK);
     }
 
@@ -58,8 +58,8 @@ public class IncomingMessage {
         return new IncomingMessage(Type.PLAYLIST_COMMAND, chatId, emptyList(), userName);
     }
 
-    static IncomingMessage unknown(String userName){
-        return new IncomingMessage(Type.UNKNOWN, "", emptyList(), userName);
+    static IncomingMessage unknown(){
+        return new IncomingMessage(Type.UNKNOWN, "", emptyList(), "Unknown user");
     }
 
     boolean shouldHandle(){
@@ -70,11 +70,11 @@ public class IncomingMessage {
         return text;
     }
 
-    public List<String> getHashTags() {
+    List<String> getHashTags() {
         return hashTags;
     }
 
-    public String getUserName() {
+    String getUserName() {
         return "@" + userName;
     }
 
