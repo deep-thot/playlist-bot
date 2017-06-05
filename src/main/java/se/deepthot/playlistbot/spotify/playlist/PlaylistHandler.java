@@ -100,9 +100,9 @@ public class PlaylistHandler {
         return result;
     }
 
-    private <T> ResponseEntity<T> performGet(String next, Class<T> responseType) {
+    private <T> ResponseEntity<T> performGet(String url, Class<T> responseType) {
         try {
-            return restTemplate.exchange(RequestEntity.get(URI.create(next)).header("Authorization", authenticationService.getAuthHeader()).build(), responseType);
+            return restTemplate.exchange(RequestEntity.get(URI.create(url)).header("Authorization", authenticationService.getAuthHeader()).build(), responseType);
         } catch(HttpClientErrorException e){
             logger.warn("Request returned status {}: {}. Headers: {}",e.getStatusCode(), e.getResponseBodyAsString(), e.getResponseHeaders());
             return new ResponseEntity<>(e.getStatusCode());
@@ -110,8 +110,7 @@ public class PlaylistHandler {
     }
 
     public PlayListResponse getPlaylist(String playlistId){
-        ResponseEntity<PlayListResponse> result = restTemplate.exchange(RequestEntity.get(URI.create("https://api.spotify.com/v1/users/eruenion/playlists/" + playlistId))
-                .header("Authorization", authenticationService.getAuthHeader()).build(), PlayListResponse.class);
+        ResponseEntity<PlayListResponse> result = performGet("https://api.spotify.com/v1/users/eruenion/playlists/" + playlistId, PlayListResponse.class);
         verifyResult(result);
         return result.getBody();
     }
