@@ -77,7 +77,7 @@ public class PlaylistHandler {
                 return retryInSeconds.map(retry -> {
                     logger.info("Retrying in {} s", retry);
                     try {
-                        return retryScheduler.schedule(exchange, retry, TimeUnit.SECONDS).get(retry*2, TimeUnit.SECONDS);
+                        return retryScheduler.schedule(exchange, retry + 1, TimeUnit.SECONDS).get(retry*2, TimeUnit.SECONDS);
                     } catch (InterruptedException | ExecutionException | TimeoutException e1) {
                         throw new RuntimeException(e1);
                     }
