@@ -17,7 +17,7 @@ public class TitleFilter {
     String filter(String title){
         String filtered = keywords.stream().reduce(title.toLowerCase(), (result, keyword) -> result.replace(keyword, ""));
         return filtered
-                .replaceAll("\\(.+\\)", "")
+                .replaceAll("\\(.*\\)", "")
                 .replaceAll("\\[.+]", "")
                 .replaceAll("\\*.+\\*", "")
                 .replaceFirst("(.+-.+)\\|(.+)", "$1")
