@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import static com.pengrad.telegrambot.model.MessageEntity.Type.bot_command;
-import static com.pengrad.telegrambot.model.MessageEntity.Type.hashtag;
 import static com.pengrad.telegrambot.model.MessageEntity.Type.url;
 import static java.util.Arrays.stream;
 
@@ -22,21 +21,29 @@ public class UpdateClassifier {
     static final String YOUTUBE_TRACK_PATTERN = "[\\s\\S]*https://((www|m)\\.youtube\\.com/watch\\?([\\w=&.]+)?v=|youtu\\.be/)([\\w\\d\\-]{11})[\\s\\S]*";
 
     IncomingMessage classify(Update update){
+        String usernameOrForward = getUsernameOrForwardFrom(update);
         if(update.message() == null || update.message().entities() == null){
             logger.info("Ignoring update {}", update);
             return IncomingMessage.unknown(getUsername(update));
         }
         if(containsSpotifyTrack(update)){
-            return IncomingMessage.spotify(update.message().text(), getUsername(update));
+            return IncomingMessage.spotify(update.message().text(), usernameOrForward);
         }
         if(isYoutubeTrack(update)){
-            return IncomingMessage.youtube(update.message().text(), getUsername(update));
+            return IncomingMessage.youtube(update.message().text(), usernameOrForward);
         }
         if(isBotCommand(update)){
             return IncomingMessage.playlistCommand(update.message().chat().id() + "", getUsername(update));
         }
         logger.info("Ignoring message {}", update.message());
-        return IncomingMessage.unknown(getUsername(update));
+        return IncomingMessage.unknown(usernameOrForward);
+    }
+
+    private String getUsernameOrForwardFrom(Update update) {
+        if(update.message().forwardFrom() != null){
+            return update.message().forwardFrom().username();
+        }
+        return getUsername(update);
     }
 
     private String getUsername(Update update) {
