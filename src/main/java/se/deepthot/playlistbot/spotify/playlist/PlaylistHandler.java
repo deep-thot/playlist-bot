@@ -12,15 +12,12 @@ import se.deepthot.playlistbot.spotify.TrackId;
 
 import javax.inject.Inject;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.*;
 
 /**
  * Created by Eruenion on 2017-03-08.
@@ -107,8 +104,8 @@ public class PlaylistHandler {
         try {
             return restTemplate.exchange(RequestEntity.get(URI.create(next)).header("Authorization", authenticationService.getAuthHeader()).build(), responseType);
         } catch(HttpClientErrorException e){
-            logger.warn("Request returned status {}: {}",e.getStatusCode(), e.getResponseBodyAsString());
-            return new ResponseEntity<T>(e.getStatusCode());
+            logger.warn("Request returned status {}: {}. Headers: {}",e.getStatusCode(), e.getResponseBodyAsString(), e.getResponseHeaders());
+            return new ResponseEntity<>(e.getStatusCode());
         }
     }
 
