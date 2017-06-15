@@ -35,7 +35,7 @@ public class BotUpdatesListener implements UpdatesListener {
     private static final Pattern trackPattern = Pattern.compile("https://open.spotify.com/track/([\\w\\d]+)");
     private static final Pattern youtubePattern = Pattern.compile(UpdateClassifier.YOUTUBE_TRACK_PATTERN);
 
-    private static final Set<String> playlistHashTagPatterns = Sets.newHashSet("#30daysongchallenge", "#day[\\d]{2}");
+    private static final Set<String> playlistHashTagPatterns = Sets.newHashSet("#30daysongchallenge", "#day[\\d]{2}", "#[12][09][0-9]{2}");
     private static final String PLAYLIST_PREFIX = "Musiksnack - ";
 
     private final TelegramBot telegramBot;
@@ -82,7 +82,7 @@ public class BotUpdatesListener implements UpdatesListener {
                     case PLAYLIST_COMMAND: {
                         String playlist = playlistHandler.getPlaylistByName(PLAYLIST_PREFIX + m.getUserName());
                         String text = getPersonalPLaylist(playlist);
-                        telegramBot.execute(new SendMessage(m.getText(), text + "\n\n hela kanalens playlist med _allt_ hittar du på https://open.spotify.com/user/eruenion/playlist/" + playlistId).parseMode(ParseMode.Markdown));
+                        telegramBot.execute(new SendMessage(m.getText(), text + "\n\n hela kanalens playlist med _allt_ hittar du på https://open.spotify.com/user/esplaylistbot/playlist/" + playlistId).parseMode(ParseMode.Markdown));
                     }
                 }
             });
@@ -98,7 +98,7 @@ public class BotUpdatesListener implements UpdatesListener {
         if(playlist == null){
             text = "Du har ingen playlist än. Skicka några youtube eller spotify-länkar till mig först.";
         } else {
-            text = "Din playlist hittar du på https://open.spotify.com/user/eruenion/playlist/" + playlist;
+            text = "Din playlist hittar du på https://open.spotify.com/user/esplaylistbot/playlist/" + playlist;
         }
         return text;
     }

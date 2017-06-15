@@ -60,7 +60,7 @@ public class PlaylistHandler {
         LinkedMultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
         headers.add("Authorization", authenticationService.getAuthHeader());
         HttpEntity<AddTracksRequest> entity = new HttpEntity<>(new AddTracksRequest(singletonList(TrackId.of(trackId).getSpotifyUrl())), headers);
-        performWithRetry(() -> restTemplate.exchange("https://api.spotify.com/v1/users/eruenion/playlists/{playlistId}/tracks", HttpMethod.POST, entity, AddTracksResponse.class, playlistId), "Add track " + trackId + " to playlist " + playlistId);
+        performWithRetry(() -> restTemplate.exchange("https://api.spotify.com/v1/users/esplaylistbot/playlists/{playlistId}/tracks", HttpMethod.POST, entity, AddTracksResponse.class, playlistId), "Add track " + trackId + " to playlist " + playlistId);
         logger.info("Added track {}", trackId);
         tracksCache.get(playlistId).add(trackId);
 
@@ -92,7 +92,7 @@ public class PlaylistHandler {
     }
 
     private PlayListResponse createPlaylist(String name){
-        ResponseEntity<PlayListResponse> result = performWithRetry(() -> restTemplate.exchange(RequestEntity.post(URI.create("https://api.spotify.com/v1/users/eruenion/playlists")).contentType(MediaType.APPLICATION_JSON).header("Authorization", authenticationService.getAuthHeader()).body(new CreatePlaylistRequest(name, true)), PlayListResponse.class), "Create playlist " + name);
+        ResponseEntity<PlayListResponse> result = performWithRetry(() -> restTemplate.exchange(RequestEntity.post(URI.create("https://api.spotify.com/v1/users/esplaylistbot/playlists")).contentType(MediaType.APPLICATION_JSON).header("Authorization", authenticationService.getAuthHeader()).body(new CreatePlaylistRequest(name, true)), PlayListResponse.class), "Create playlist " + name);
         verifyResult(result);
         PlayListResponse body = result.getBody();
         logger.info("Created new playlist \"{}\" ({})", body.getName(), body.getId());
@@ -121,7 +121,7 @@ public class PlaylistHandler {
     }
 
     public PlayListResponse getPlaylist(String playlistId){
-        ResponseEntity<PlayListResponse> result = performGet("https://api.spotify.com/v1/users/eruenion/playlists/" + playlistId, PlayListResponse.class, "loading playlist " + playlistId);
+        ResponseEntity<PlayListResponse> result = performGet("https://api.spotify.com/v1/users/esplaylistbot/playlists/" + playlistId, PlayListResponse.class, "loading playlist " + playlistId);
         verifyResult(result);
         return result.getBody();
     }
@@ -141,7 +141,7 @@ public class PlaylistHandler {
     }
 
     private List<PlayListResponse> listPlayLists(){
-        PlaylistListResponse list = performGet("https://api.spotify.com/v1/users/eruenion/playlists", PlaylistListResponse.class, "Initial get all playlists").getBody();
+        PlaylistListResponse list = performGet("https://api.spotify.com/v1/users/esplaylistbot/playlists", PlaylistListResponse.class, "Initial get all playlists").getBody();
         List<PlayListResponse> result = list.getItems();
         String next = list.getNext();
         while(next != null){
