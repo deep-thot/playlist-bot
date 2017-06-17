@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.*;
+import java.util.stream.Stream;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -133,7 +134,16 @@ public class PlaylistHandler {
     public void addTrackToPlaylists(String trackId, List<String> playlistNames){
         logger.info("Adding to playlists {}", playlistNames);
         Map<String, String> playlistMap = getPlaylists();
-        playlistNames.stream().map(name -> playlistMap.computeIfAbsent(name,  n-> createPlaylist(n).getId())).forEach(id -> addTrackToPlaylist(id, trackId));
+        getOrCreatePlaylists(playlistNames).forEach(id -> addTrackToPlaylist(id, trackId));
+    }
+
+    private Stream<String> getOrCreatePlaylists(List<String> playlistNames) {
+        return playlistNames.stream().map(this::getOrCreatePlaylist);
+    }
+
+    public String getOrCreatePlaylist(String name) {
+        Map<String, String> playlistMap = getPlaylists();
+        return playlistMap.computeIfAbsent(name,  n-> createPlaylist(n).getId());
     }
 
     private Map<String, String> getPlaylists() {
