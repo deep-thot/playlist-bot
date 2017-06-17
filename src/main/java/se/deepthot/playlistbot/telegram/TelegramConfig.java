@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class TelegramConfig {
     private String botToken;
-    private String mainChatlId;
+    private Long mainChatlId;
 
     public String getBotToken() {
         return botToken;
@@ -20,11 +20,11 @@ public class TelegramConfig {
         this.botToken = botToken;
     }
 
-    public String getMainChatlId() {
+    public Long getMainChatlId() {
         return mainChatlId;
     }
 
-    public void setMainChatlId(String mainChatlId) {
+    public void setMainChatlId(Long mainChatlId) {
         this.mainChatlId = mainChatlId;
     }
 }
