@@ -37,18 +37,24 @@ public class PlaylistAnnouncer {
 
     @Scheduled(cron = "0 58 23 * * SAT", zone = "Europe/Stockholm")
     public void newPlaylist(){
-        int currentYear = YearTheme.getCurrentYear();
-        String playlistId = playlistHandler.getOrCreatePlaylist("Musiksnack - #" + currentYear);
-        Optional<TrackId> trackId = trackGuesser.guessTrack("bot year:2016");
+        Optional<Integer> year = YearTheme.getCurrentYear();
+        year.ifPresent(currentYear -> {
+            String playlistId = playlistHandler.getOrCreatePlaylist("Musiksnack - #" + currentYear);
+            Optional<TrackId> trackId = trackGuesser.guessTrack("bot year:2016");
 
-        trackId.ifPresent(t -> playlistHandler.addTrackToPlaylist(playlistId, t.getId()));
+            trackId.ifPresent(t -> playlistHandler.addTrackToPlaylist(playlistId, t.getId()));
 
-        logger.info("sending message to chat {}", telegramConfig.getMainChatId());
-        SendResponse response = telegramBot.execute(new SendMessage(telegramConfig.getMainChatId(), "Ny vecka, nytt år. Nu kör vi #" + currentYear + " \n https://open.spotify.com/user/esplaylistbot/playlist/" + playlistId));
-        logger.info("Got response {}", response);
-        logger.info("Error code {}, Description {}, parameters {}", response.errorCode(), response.description(), response.parameters());
+            logger.info("sending message to chat {}", telegramConfig.getMainChatId());
+            SendResponse response = postMessageToChannel("Ny vecka, nytt år. Nu kör vi #" + currentYear + " \n https://open.spotify.com/user/esplaylistbot/playlist/" + playlistId);
+            logger.info("Got response {}", response);
+            logger.info("Error code {}, Description {}, parameters {}", response.errorCode(), response.description(), response.parameters());
+        });
+        year.orElseGet(() -> postMessageToChannel("Nej, nu gör vi något annat va? Annars måste någon säga åt mig att lägga in ett år till.").errorCode());
     }
 
+    private SendResponse postMessageToChannel(String text) {
+        return telegramBot.execute(new SendMessage(telegramConfig.getMainChatId(), text));
+    }
 
 
 }
