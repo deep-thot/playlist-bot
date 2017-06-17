@@ -4,9 +4,9 @@ import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.TelegramBotAdapter;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.converter.FormHttpMessageConverter;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.client.RestTemplate;
 import se.deepthot.playlistbot.telegram.TelegramConfig;
 
@@ -14,6 +14,7 @@ import se.deepthot.playlistbot.telegram.TelegramConfig;
  * Created by Eruenion on 2017-03-07.
  */
 @SpringBootApplication
+@EnableScheduling
 public class Application {
 
     private String botToken;
