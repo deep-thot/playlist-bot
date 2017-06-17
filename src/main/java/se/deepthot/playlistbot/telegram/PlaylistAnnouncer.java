@@ -30,7 +30,7 @@ public class PlaylistAnnouncer {
         this.telegramConfig = telegramConfig;
     }
 
-    @Scheduled(cron = "0 23 23 * * SAT", zone = "Europe/Stockholm")
+    @Scheduled(cron = "0 29 23 * * SAT", zone = "Europe/Stockholm")
     public void newPlaylist(){
         int currentYear = YearTheme.getCurrentYear();
         String playlistId = playlistHandler.getOrCreatePlaylist("Musiksnack - #" + currentYear);
