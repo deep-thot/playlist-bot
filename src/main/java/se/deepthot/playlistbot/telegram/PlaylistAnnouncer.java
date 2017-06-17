@@ -2,6 +2,9 @@ package se.deepthot.playlistbot.telegram;
 
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.request.SendMessage;
+import com.pengrad.telegrambot.response.SendResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import se.deepthot.playlistbot.spotify.TrackId;
@@ -23,6 +26,8 @@ public class PlaylistAnnouncer {
     private final TrackGuesser trackGuesser;
     private final TelegramConfig telegramConfig;
 
+    private static final Logger logger = LoggerFactory.getLogger(PlaylistAnnouncer.class);
+
     public PlaylistAnnouncer(TelegramBot telegramBot, PlaylistHandler playlistHandler, TrackGuesser trackGuesser, TelegramConfig telegramConfig) {
         this.telegramBot = telegramBot;
         this.playlistHandler = playlistHandler;
@@ -30,7 +35,7 @@ public class PlaylistAnnouncer {
         this.telegramConfig = telegramConfig;
     }
 
-    @Scheduled(cron = "0 29 23 * * SAT", zone = "Europe/Stockholm")
+    @Scheduled(cron = "0 58 23 * * SAT", zone = "Europe/Stockholm")
     public void newPlaylist(){
         int currentYear = YearTheme.getCurrentYear();
         String playlistId = playlistHandler.getOrCreatePlaylist("Musiksnack - #" + currentYear);
@@ -38,7 +43,12 @@ public class PlaylistAnnouncer {
 
         trackId.ifPresent(t -> playlistHandler.addTrackToPlaylist(playlistId, t.getId()));
 
-        telegramBot.execute(new SendMessage(telegramConfig.getMainChatlId(), "Ny vecka, nytt år. Nu kör vi #" + currentYear + " \n https://open.spotify.com/user/esplaylistbot/playlist/" + playlistId ));
+        logger.info("sending message to chat {}", telegramConfig.getMainChatId());
+        SendResponse response = telegramBot.execute(new SendMessage(telegramConfig.getMainChatId(), "Ny vecka, nytt år. Nu kör vi #" + currentYear + " \n https://open.spotify.com/user/esplaylistbot/playlist/" + playlistId));
+        logger.info("Got response {}", response);
+        logger.info("Error code {}, Description {}, parameters {}", response.errorCode(), response.description(), response.parameters());
     }
+
+
 
 }
