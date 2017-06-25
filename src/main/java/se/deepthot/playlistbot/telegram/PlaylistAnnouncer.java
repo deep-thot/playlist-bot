@@ -40,7 +40,7 @@ public class PlaylistAnnouncer {
         Optional<Integer> year = YearTheme.getCurrentYear();
         year.ifPresent(currentYear -> {
             String playlistId = playlistHandler.getOrCreatePlaylist("Musiksnack - #" + currentYear);
-            Optional<TrackId> trackId = trackGuesser.guessTrack("bot year:2016");
+            Optional<TrackId> trackId = trackGuesser.guessTrack("bot year:" + currentYear);
 
             trackId.ifPresent(t -> playlistHandler.addTrackToPlaylist(playlistId, t.getId()));
 
