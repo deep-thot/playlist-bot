@@ -1,4 +1,4 @@
-package se.deepthot.playlistbot.spotify.playlist;
+package se.deepthot.playlistbot.spotify.search;
 
 import java.util.List;
 
@@ -17,13 +17,13 @@ public class TrackSearchResponse {
     }
 
     static class Tracks{
-        private List<Track> items;
+        private List<SearchTrack> items;
 
-        List<Track> getItems() {
+        List<SearchTrack> getItems() {
             return items;
         }
 
-        public void setItems(List<Track> items) {
+        public void setItems(List<SearchTrack> items) {
             this.items = items;
         }
 
@@ -45,48 +45,6 @@ public class TrackSearchResponse {
 
         public void setHref(String href) {
             this.href = href;
-        }
-    }
-
-    static class Track {
-
-        String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        private String name;
-
-        String getId() {
-            return id;
-        }
-
-        public void setId(String id) {
-            this.id = id;
-        }
-
-        private String id;
-
-        private List<Artist> artists;
-
-        List<Artist> getArtists() {
-            return artists;
-        }
-
-        public void setArtists(List<Artist> artists) {
-            this.artists = artists;
-        }
-
-        @Override
-        public String toString() {
-            return "TrackData{" +
-                    "track=" + getName() +
-                    ", artists=" + artists +
-                    ", id=" + getId() +
-                    '}';
         }
     }
 

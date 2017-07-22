@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Service;
 import se.deepthot.playlistbot.spotify.playlist.PlaylistHandler;
-import se.deepthot.playlistbot.spotify.playlist.TrackGuesser;
+import se.deepthot.playlistbot.spotify.search.TrackGuesser;
 import se.deepthot.playlistbot.youtube.TrackResource;
 
 import javax.annotation.PostConstruct;
