@@ -44,7 +44,7 @@ public class PlaylistAnnouncer {
         this.tracks = tracks;
     }
 
-    @Scheduled(cron = "0 58 23 * * SAT", zone = "Europe/Stockholm")
+    @Scheduled(cron = "0 16 2 * * SUN", zone = "Europe/Stockholm")
     public void newPlaylist(){
         Optional<Integer> year = YearTheme.getCurrentYear();
         year.ifPresent(currentYear -> {
@@ -70,5 +70,7 @@ public class PlaylistAnnouncer {
     private SendResponse postMessageToChannel(String text) {
         return telegramBot.execute(new SendMessage(telegramConfig.getMainChatId(), text));
     }
+
+
 
 }

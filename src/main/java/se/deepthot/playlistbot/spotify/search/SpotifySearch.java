@@ -22,7 +22,7 @@ public class SpotifySearch {
     }
 
     public List<SearchTrack> searchTracks(String query){
-        ResponseEntity<TrackSearchResponse> result = spotifyApi.performGet("search?type=track&q=" + query, TrackSearchResponse.class, "Search " + query);
+        ResponseEntity<TrackSearchResponse> result = spotifyApi.performGet("search?type=track&q={query}", TrackSearchResponse.class, "Search " + query, query);
         TrackSearchResponse response = result.getBody();
         TrackSearchResponse.Tracks tracks = response.getTracks();
         logger.info("Found {} potential matches: {} ({})", tracks.getItems().size(), tracks.getItems(), tracks.getHref());

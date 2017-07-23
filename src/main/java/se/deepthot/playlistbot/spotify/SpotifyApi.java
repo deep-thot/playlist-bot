@@ -7,9 +7,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriTemplate;
 
 import javax.inject.Inject;
-import java.net.URI;
 import java.util.Optional;
 import java.util.concurrent.*;
 
@@ -32,8 +32,8 @@ public class SpotifyApi {
         retryScheduler = Executors.newSingleThreadScheduledExecutor();
     }
 
-    public <T> ResponseEntity<T> performGet(String url, Class<T> responseType, String title) {
-        return performWithRetry(() -> restTemplate.exchange(RequestEntity.get(URI.create(getUrl(url))).header("Authorization", authenticationService.getAuthHeader()).build(), responseType), title);
+    public <T> ResponseEntity<T> performGet(String url, Class<T> responseType, String title, Object... urlParams) {
+        return performWithRetry(() -> restTemplate.exchange(RequestEntity.get(new UriTemplate(getUrl(url)).expand(urlParams)).header("Authorization", authenticationService.getAuthHeader()).build(), responseType), title);
     }
 
     private String getUrl(String url) {
