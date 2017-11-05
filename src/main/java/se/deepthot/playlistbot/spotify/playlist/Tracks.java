@@ -1,5 +1,8 @@
 package se.deepthot.playlistbot.spotify.playlist;
 
+import se.deepthot.playlistbot.spotify.track.Track;
+
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -7,7 +10,7 @@ import java.util.List;
  */
 public class Tracks {
 
-    List<TrackData> getItems() {
+    public List<TrackData> getItems() {
         return items;
     }
 
@@ -19,7 +22,7 @@ public class Tracks {
 
     private String next;
 
-    public String getNext() {
+    String getNext() {
         return next;
     }
 
@@ -27,8 +30,15 @@ public class Tracks {
         this.next = next;
     }
 
-    static class TrackData {
-        Track getTrack() {
+    public static Tracks empty(){
+        Tracks tracks = new Tracks();
+        tracks.setItems(Collections.emptyList());
+        tracks.setNext("");
+        return tracks;
+    }
+
+    public static class TrackData {
+        public Track getTrack() {
             return track;
         }
 
@@ -58,27 +68,7 @@ public class Tracks {
         }
     }
 
-    static class Track {
-        String getName() {
-            return name;
-        }
 
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        private String name;
-
-        String getId() {
-            return id;
-        }
-
-        public void setId(String id) {
-            this.id = id;
-        }
-
-        private String id;
-    }
 
     static class Artist {
         private String name;

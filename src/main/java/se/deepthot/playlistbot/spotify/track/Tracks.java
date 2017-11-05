@@ -4,6 +4,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import se.deepthot.playlistbot.spotify.SpotifyApi;
 import se.deepthot.playlistbot.spotify.TrackId;
+import se.deepthot.playlistbot.spotify.domain.Album;
+import se.deepthot.playlistbot.spotify.domain.SimpleAlbum;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -23,6 +25,9 @@ public class Tracks {
         String trackIdParam = trackIds.stream().map(TrackId::getId).collect(joining(","));
         ResponseEntity<TracksResponse> response = spotifyApi.performGet("tracks?ids=" + trackIdParam, TracksResponse.class, "track ids " + trackIdParam);
         return response.getBody().getTracks();
+    }
 
+    public Album loadFullAlbum(SimpleAlbum simpleAlbum){
+        return spotifyApi.performGet(simpleAlbum.getHref(), Album.class, "Loading album " + simpleAlbum.getName()).getBody();
     }
 }

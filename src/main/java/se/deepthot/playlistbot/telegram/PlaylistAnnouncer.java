@@ -11,6 +11,7 @@ import se.deepthot.playlistbot.spotify.TrackId;
 import se.deepthot.playlistbot.spotify.playlist.PlaylistHandler;
 import se.deepthot.playlistbot.spotify.search.SearchTrack;
 import se.deepthot.playlistbot.spotify.search.SpotifySearch;
+import se.deepthot.playlistbot.spotify.track.PopularTracks;
 import se.deepthot.playlistbot.spotify.track.Track;
 import se.deepthot.playlistbot.spotify.track.Tracks;
 import se.deepthot.playlistbot.theme.YearTheme;
@@ -32,15 +33,17 @@ public class PlaylistAnnouncer {
     private final PlaylistHandler playlistHandler;
     private final TelegramConfig telegramConfig;
     private final SpotifySearch spotifySearch;
+    private final PopularTracks popularTracks;
     private final Tracks tracks;
 
     private static final Logger logger = LoggerFactory.getLogger(PlaylistAnnouncer.class);
 
-    public PlaylistAnnouncer(TelegramBot telegramBot, PlaylistHandler playlistHandler, TelegramConfig telegramConfig, SpotifySearch spotifySearch, Tracks tracks) {
+    public PlaylistAnnouncer(TelegramBot telegramBot, PlaylistHandler playlistHandler, TelegramConfig telegramConfig, SpotifySearch spotifySearch, PopularTracks popularTracks, Tracks tracks) {
         this.telegramBot = telegramBot;
         this.playlistHandler = playlistHandler;
         this.telegramConfig = telegramConfig;
         this.spotifySearch = spotifySearch;
+        this.popularTracks = popularTracks;
         this.tracks = tracks;
     }
 
@@ -49,9 +52,8 @@ public class PlaylistAnnouncer {
         Optional<Integer> year = YearTheme.getCurrentYear();
         year.ifPresent(currentYear -> {
             String playlistId = playlistHandler.getOrCreatePlaylist("Musiksnack - #" + currentYear);
-            Optional<TrackId> trackId = findBotTrack(currentYear);
-
-            trackId.ifPresent(t -> playlistHandler.addTrackToPlaylist(playlistId, t.getId()));
+            findPopularTracks(currentYear).forEach(t -> playlistHandler.addTrackToPlaylist(playlistId, t.getId()));
+            findBotTrack(currentYear).ifPresent(t -> playlistHandler.addTrackToPlaylist(playlistId, t.getId()));
 
             logger.info("sending message to chat {}", telegramConfig.getMainChatId());
             SendResponse response = postMessageToChannel("Ny vecka, nytt år. Nu kör vi #" + currentYear + " \n https://open.spotify.com/user/esplaylistbot/playlist/" + playlistId);
@@ -67,9 +69,17 @@ public class PlaylistAnnouncer {
         return trackList.stream().sorted(Comparator.comparing(Track::getPopularity).reversed()).peek(t -> logger.info("track {}", t)).map(Track::getId).map(TrackId::of).findFirst();
     }
 
+    private List<TrackId> findPopularTracks(Integer currentYear){
+        return popularTracks.findPopularTracks(currentYear, 15).stream().map(t -> TrackId.of(t.getId())).collect(toList());
+    }
+
     private SendResponse postMessageToChannel(String text) {
         return telegramBot.execute(new SendMessage(telegramConfig.getMainChatId(), text));
     }
+
+
+
+
 
 
 

@@ -58,7 +58,7 @@ public class SpotifyApi {
                 return retryInSeconds.map(retry -> {
                     logger.info("Retrying in {} s", retry);
                     try {
-                        return retryScheduler.schedule(exchange, retry + 1, TimeUnit.SECONDS).get(retry*2, TimeUnit.SECONDS);
+                        return retryScheduler.schedule(exchange, retry + 1, TimeUnit.SECONDS).get(retry*2 + 1, TimeUnit.SECONDS);
                     } catch (InterruptedException | ExecutionException | TimeoutException e1) {
                         throw new RuntimeException(e1);
                     }
@@ -68,6 +68,7 @@ public class SpotifyApi {
                 return new ResponseEntity<>(e.getStatusCode());
             }
         } catch(Exception e){
+            logger.warn("Error performing {}", title);
             throw new RuntimeException(e);
         }
     }

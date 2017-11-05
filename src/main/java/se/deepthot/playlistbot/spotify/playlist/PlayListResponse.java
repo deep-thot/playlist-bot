@@ -19,7 +19,7 @@ public class PlayListResponse {
         this.name = name;
     }
 
-    Tracks getTracks() {
+    public Tracks getTracks() {
         return tracks;
     }
 

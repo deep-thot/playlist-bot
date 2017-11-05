@@ -4,10 +4,12 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import se.deepthot.playlistbot.spotify.SpotifyApi;
 import se.deepthot.playlistbot.spotify.TrackId;
+import se.deepthot.playlistbot.spotify.track.Track;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -54,15 +56,14 @@ public class PlaylistHandler {
 
     private PlayListResponse createPlaylist(String name){
         ResponseEntity<PlayListResponse> result = spotifyApi.performPost("users/esplaylistbot/playlists", new CreatePlaylistRequest(name, true), PlayListResponse.class, "Create playlist " + name);
-        verifyResult(result);
-        PlayListResponse body = result.getBody();
+        PlayListResponse body = verifyResult(result).getBody();
         logger.info("Created new playlist \"{}\" ({})", body.getName(), body.getId());
         playlistCache.invalidateAll();
         return body;
     }
 
     private Set<String> getTrackIds(Tracks tracks) {
-        return tracks.getItems().stream().map(Tracks.TrackData::getTrack).map(Tracks.Track::getId).collect(toSet());
+        return tracks.getItems().stream().map(Tracks.TrackData::getTrack).map(Track::getId).collect(toSet());
     }
 
     private Set<String> getAllTrackIds(String playlistId){
@@ -77,10 +78,19 @@ public class PlaylistHandler {
         return result;
     }
 
-    public PlayListResponse getPlaylist(String playlistId){
+    private PlayListResponse getPlaylist(String playlistId){
         ResponseEntity<PlayListResponse> result = spotifyApi.performGet("users/esplaylistbot/playlists/" + playlistId, PlayListResponse.class, "loading playlist " + playlistId);
-        verifyResult(result);
-        return result.getBody();
+
+        return verifyResult(result).getBody();
+    }
+
+    public Tracks loadPlaylist(String url){
+        ResponseEntity<Tracks> result = spotifyApi.performGet(url, Tracks.class, "loading playlist from " + url);
+        if(result.getStatusCode() == HttpStatus.NOT_FOUND){
+            logger.warn("Playlist at {} not found", url);
+            return Tracks.empty();
+        }
+        return verifyResult(result).getBody();
     }
 
     public String getPlaylistByName(String name){
@@ -119,10 +129,11 @@ public class PlaylistHandler {
 
 
 
-    private void verifyResult(ResponseEntity<?> result) {
+    private <T> ResponseEntity<T> verifyResult(ResponseEntity<T> result) {
         if(!result.getStatusCode().is2xxSuccessful()){
             throw new RuntimeException("Unable to get playlist: " + result.getStatusCode().getReasonPhrase());
         }
+        return result;
     }
 
 

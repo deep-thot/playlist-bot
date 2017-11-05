@@ -29,5 +29,10 @@ public class SpotifySearch {
         return tracks.getItems();
     }
 
+    public List<SearchPlaylist> searchPlaylist(String query, int limit){
+        ResponseEntity<PlaylistSearchResponse> result = spotifyApi.performGet("search?type=playlist&q={query}&limit={limit}", PlaylistSearchResponse.class, "Search playlist" + query, query, limit);
+        return result.getBody().getPlaylists().getItems();
+    }
+
 
 }
