@@ -9,7 +9,9 @@ import se.deepthot.playlistbot.spotify.domain.SimpleAlbum;
 
 import javax.inject.Inject;
 import java.util.List;
+import java.util.Optional;
 
+import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.joining;
 
 @Service
@@ -24,7 +26,7 @@ public class Tracks {
     public List<Track> loadTracks(List<TrackId> trackIds){
         String trackIdParam = trackIds.stream().map(TrackId::getId).collect(joining(","));
         ResponseEntity<TracksResponse> response = spotifyApi.performGet("tracks?ids=" + trackIdParam, TracksResponse.class, "track ids " + trackIdParam);
-        return response.getBody().getTracks();
+        return Optional.ofNullable(response.getBody()).map(TracksResponse::getTracks).orElse(emptyList());
     }
 
     public Album loadFullAlbum(SimpleAlbum simpleAlbum){

@@ -65,6 +65,10 @@ public class PlaylistAnnouncer {
 
     private Optional<TrackId> findBotTrack(Integer currentYear) {
         List<SearchTrack> tracks = spotifySearch.searchTracks("bot year:" + currentYear);
+        if(tracks.isEmpty()){
+            logger.info("No bot track found, skipping");
+            return Optional.empty();
+        }
         List<Track> trackList = this.tracks.loadTracks(tracks.stream().map(s -> TrackId.of(s.getId())).collect(toList()));
         return trackList.stream().sorted(Comparator.comparing(Track::getPopularity).reversed()).peek(t -> logger.info("track {}", t)).map(Track::getId).map(TrackId::of).findFirst();
     }
