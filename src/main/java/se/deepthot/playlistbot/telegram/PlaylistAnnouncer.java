@@ -8,19 +8,21 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import se.deepthot.playlistbot.spotify.TrackId;
+import se.deepthot.playlistbot.spotify.playlist.PlaylistConfig;
 import se.deepthot.playlistbot.spotify.playlist.PlaylistHandler;
 import se.deepthot.playlistbot.spotify.search.SearchTrack;
 import se.deepthot.playlistbot.spotify.search.SpotifySearch;
 import se.deepthot.playlistbot.spotify.track.PopularTracks;
 import se.deepthot.playlistbot.spotify.track.Track;
 import se.deepthot.playlistbot.spotify.track.Tracks;
-import se.deepthot.playlistbot.theme.YearTheme;
 
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
 import static java.util.stream.Collectors.toList;
+import static se.deepthot.playlistbot.theme.WeeklyPlaylist.*;
 
 /**
  * Created by eruenion on 2017-06-17.
@@ -47,20 +49,29 @@ public class PlaylistAnnouncer {
         this.tracks = tracks;
     }
 
-    @Scheduled(cron = "0 16 2 * * SUN", zone = "Europe/Stockholm")
+    @Scheduled(cron = "00 35 22 * * SAT", zone = "Europe/Stockholm")
     public void newPlaylist(){
-        Optional<Integer> year = YearTheme.getCurrentYear();
-        year.ifPresent(currentYear -> {
-            String playlistId = playlistHandler.getOrCreatePlaylist("Musiksnack - #" + currentYear);
-            findPopularTracks(currentYear).forEach(t -> playlistHandler.addTrackToPlaylist(playlistId, t.getId()));
-            findBotTrack(currentYear).ifPresent(t -> playlistHandler.addTrackToPlaylist(playlistId, t.getId()));
+        if(playlistHandler.getPlaylistByName(prefixed(getCurrentWeeksPlaylist())) != null){
+            logger.info("There is already a playlist for this week. Did someone run this before?");
+            return;
+        }
+        String weeklyPlaylist = playlistHandler.getOrCreatePlaylist(prefixed(getLastWeeksPlaylist()));
+        playlistHandler.renamePlaylist(weeklyPlaylist, prefixed(getCurrentWeeksPlaylist()));
+        String intraWeekPlaylist = playlistHandler.getOrCreatePlaylist(prefixed(getIntraWeekPlaylist()));
+        List<TrackId> tracksThisWeek = playlistHandler.getTracksOfPlaylist(intraWeekPlaylist);
+        List<String> trackUris = tracksThisWeek.stream().map(TrackId::getSpotifyUrl).collect(toList());
+        playlistHandler.replaceTracks(weeklyPlaylist, trackUris);
+        playlistHandler.replaceTracks(intraWeekPlaylist, Collections.emptyList());
 
-            logger.info("sending message to chat {}", telegramConfig.getMainChatId());
-            SendResponse response = postMessageToChannel("Ny vecka, nytt år. Nu kör vi #" + currentYear + " \n https://open.spotify.com/user/esplaylistbot/playlist/" + playlistId);
-            logger.info("Got response {}", response);
-            logger.info("Error code {}, Description {}, parameters {}", response.errorCode(), response.description(), response.parameters());
-        });
-        year.orElseGet(() -> postMessageToChannel("Nej, nu gör vi något annat va? Annars måste någon säga åt mig att lägga in ett år till.").errorCode());
+        postMessageToChannel("Då summerar vi den gångna veckan. Totalt uppfattade jag " + trackUris.size() + " låtar. \n " + playlistUrl(weeklyPlaylist));
+    }
+
+    private String prefixed(String currentWeeksPlaylist) {
+        return PlaylistConfig.PLAYLIST_PREFIX + currentWeeksPlaylist;
+    }
+
+    private static String playlistUrl(String playlistId){
+        return "https://open.spotify.com/user/esplaylistbot/playlist/" + playlistId;
     }
 
     private Optional<TrackId> findBotTrack(Integer currentYear) {

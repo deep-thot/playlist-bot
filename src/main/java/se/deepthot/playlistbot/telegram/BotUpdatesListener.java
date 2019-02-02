@@ -10,8 +10,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Service;
+import se.deepthot.playlistbot.spotify.playlist.PlaylistConfig;
 import se.deepthot.playlistbot.spotify.playlist.PlaylistHandler;
 import se.deepthot.playlistbot.spotify.search.TrackGuesser;
+import se.deepthot.playlistbot.theme.WeeklyPlaylist;
 import se.deepthot.playlistbot.youtube.TrackResource;
 
 import javax.annotation.PostConstruct;
@@ -22,6 +24,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -36,7 +39,6 @@ public class BotUpdatesListener implements UpdatesListener {
     private static final Pattern youtubePattern = Pattern.compile(UpdateClassifier.YOUTUBE_TRACK_PATTERN);
 
     private static final Set<String> playlistHashTagPatterns = Sets.newHashSet("#30daysongchallenge", "#day[\\d]{2}", "#[12][09][0-9]{2}");
-    private static final String PLAYLIST_PREFIX = "Musiksnack - ";
 
     private final TelegramBot telegramBot;
     private final PlaylistHandler playlistHandler;
@@ -80,7 +82,7 @@ public class BotUpdatesListener implements UpdatesListener {
                         break;
                     }
                     case PLAYLIST_COMMAND: {
-                        String playlist = playlistHandler.getPlaylistByName(PLAYLIST_PREFIX + m.getUserName());
+                        String playlist = playlistHandler.getPlaylistByName(PlaylistConfig.PLAYLIST_PREFIX + m.getUserName());
                         String text = getPersonalPLaylist(playlist);
                         telegramBot.execute(new SendMessage(m.getText(), text + "\n\n hela kanalens playlist med _allt_ hittar du på https://open.spotify.com/user/esplaylistbot/playlist/" + playlistId).parseMode(ParseMode.Markdown));
                     }
@@ -114,7 +116,7 @@ public class BotUpdatesListener implements UpdatesListener {
     }
 
     private void addToPlaylists(IncomingMessage m, String trackId) {
-        List<String> playlistNames = Stream.concat(filterHashTags(m.getHashTags()), Stream.of(m.getUserName())).map(PLAYLIST_PREFIX::concat).collect(toList());
+        List<String> playlistNames = Stream.of(filterHashTags(m.getHashTags()), Stream.of(WeeklyPlaylist.getIntraWeekPlaylist()), Stream.of(m.getUserName())).flatMap(identity()).map(PlaylistConfig.PLAYLIST_PREFIX::concat).collect(toList());
 
         playlistHandler.addTrackToPlaylists(trackId, playlistNames);
 

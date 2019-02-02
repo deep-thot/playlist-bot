@@ -12,10 +12,12 @@ import se.deepthot.playlistbot.spotify.TrackId;
 import se.deepthot.playlistbot.spotify.track.Track;
 
 import javax.inject.Inject;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.Collections.singletonList;
@@ -31,7 +33,7 @@ public class PlaylistHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(PlaylistHandler.class);
     private final LoadingCache<String, List<PlayListResponse>> playlistCache;
-    private final LoadingCache<String, Set<String>> tracksCache;
+    private final LoadingCache<String, Set<String>> trackIdCache;
     private final SpotifyApi spotifyApi;
 
 
@@ -39,18 +41,18 @@ public class PlaylistHandler {
     public PlaylistHandler(SpotifyApi spotifyApi) {
         this.spotifyApi = spotifyApi;
         this.playlistCache = Caffeine.newBuilder().expireAfterWrite(2, TimeUnit.HOURS).build(s -> listPlayLists());
-        tracksCache = Caffeine.newBuilder().expireAfterWrite(2, TimeUnit.HOURS).build(this::getAllTrackIds);
+        trackIdCache = Caffeine.newBuilder().expireAfterWrite(2, TimeUnit.HOURS).build(this::getAllTracks);
     }
 
 
     public void addTrackToPlaylist(String playlistId, String trackId){
-        if(tracksCache.get(playlistId).contains(trackId)){
+        if(trackIdCache.get(playlistId).contains(trackId)){
             logger.info("No new tracks to add. ({} already exist in playlist)", trackId);
             return;
         }
         spotifyApi.performPost("users/esplaylistbot/playlists/{playlistId}/tracks", new AddTracksRequest(singletonList(TrackId.of(trackId).getSpotifyUrl())), AddTracksResponse.class, "Add track " + trackId + " to playlist " + playlistId, playlistId);
         logger.info("Added track {}", trackId);
-        tracksCache.get(playlistId).add(trackId);
+        trackIdCache.get(playlistId).add(trackId);
 
     }
 
@@ -62,21 +64,28 @@ public class PlaylistHandler {
         return body;
     }
 
-    private Set<String> getTrackIds(Tracks tracks) {
-        return tracks.getItems().stream().map(Tracks.TrackData::getTrack).map(Track::getId).collect(toSet());
+
+    private Set<String> getTrackIds(List<TrackData> tracks){
+        return tracks.stream().map(TrackData::getTrack).map(Track::getId).collect(toSet());
     }
 
-    private Set<String> getAllTrackIds(String playlistId){
+    private Set<String> getAllTracks(String playlistId){
+        List<TrackData> result = getTrackData(playlistId);
+        return getTrackIds(result);
+    }
+
+    private List<TrackData> getTrackData(String playlistId) {
         PlayListResponse playlist = getPlaylist(playlistId);
         String next = playlist.getTracks().getNext();
-        Set<String> result = getTrackIds(playlist.getTracks());
+        List<TrackData> result = playlist.getTracks().getItems();
         while(next != null){
             Tracks response = spotifyApi.performGet(next, Tracks.class, "Loading tracks for " + playlistId).getBody();
-            result.addAll(getTrackIds(response));
+            result.addAll(response.getItems());
             next = response.getNext();
         }
         return result;
     }
+
 
     private PlayListResponse getPlaylist(String playlistId){
         ResponseEntity<PlayListResponse> result = spotifyApi.performGet("users/esplaylistbot/playlists/" + playlistId, PlayListResponse.class, "loading playlist " + playlistId);
@@ -91,6 +100,10 @@ public class PlaylistHandler {
             return Tracks.empty();
         }
         return verifyResult(result).getBody();
+    }
+
+    public List<TrackId> getTracksOfPlaylist(String playlistId){
+        return getTrackData(playlistId).stream().map(td -> td.getTrack().getId()).map(TrackId::of).collect(Collectors.toList());
     }
 
     public String getPlaylistByName(String name){
@@ -125,6 +138,16 @@ public class PlaylistHandler {
             next = playlistList.getNext();
         }
         return result;
+    }
+
+    public void renamePlaylist(String playlistId, String newName){
+        spotifyApi.performPut("playlists/" + playlistId, new EditPlaylistRequest(newName), ExpectedEmptyResponse.class, "Editing playlist");
+        playlistCache.invalidateAll();
+    }
+
+    public void replaceTracks(String playlistId, List<String> trackUris){
+        spotifyApi.performPut("playlists/{playlistId}/tracks", new ReplaceTracksRequest(trackUris), ExpectedEmptyResponse.class, "Replacing tracks of playlist", playlistId);
+        trackIdCache.put(playlistId, new HashSet<>(trackUris));
     }
 
 

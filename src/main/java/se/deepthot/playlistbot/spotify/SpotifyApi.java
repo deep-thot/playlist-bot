@@ -41,11 +41,21 @@ public class SpotifyApi {
     }
 
     public <T,R> ResponseEntity<T> performPost(String url, R requestBody, Class<T> responseType, String title, Object... urlVariables){
+            HttpMethod method = HttpMethod.POST;
+        return perform(url, requestBody, responseType, title, method, urlVariables);
+    }
+
+    public <T,R> ResponseEntity<T> performPut(String url, R requestBody, Class<T> responseType, String title, Object... urlVariables){
+        return perform(url, requestBody, responseType, title, HttpMethod.PUT, urlVariables);
+    }
+
+    private <T, R> ResponseEntity<T> perform(String url, R requestBody, Class<T> responseType, String title, HttpMethod method, Object... urlVariables) {
         LinkedMultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
         headers.add("Authorization", authenticationService.getAuthHeader());
         HttpEntity<R> entity = new HttpEntity<>(requestBody, headers);
-        return performWithRetry(() -> restTemplate.exchange(getUrl(url), HttpMethod.POST, entity, responseType, urlVariables), title);
+        return performWithRetry(() -> restTemplate.exchange(getUrl(url), method, entity, responseType, urlVariables), title);
     }
+
 
     private <T> ResponseEntity<T> performWithRetry(Callable<ResponseEntity<T>> exchange, String title){
         try{

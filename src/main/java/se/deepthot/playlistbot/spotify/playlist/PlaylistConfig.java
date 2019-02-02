@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties("spotify.playlist")
 public class PlaylistConfig {
 
+    public static final String PLAYLIST_PREFIX = "Musiksnack - ";
     private String playlistId;
 
     public String getPlaylistId() {

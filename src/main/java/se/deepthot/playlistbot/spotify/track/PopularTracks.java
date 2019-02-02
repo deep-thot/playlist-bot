@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import se.deepthot.playlistbot.spotify.domain.Album;
 import se.deepthot.playlistbot.spotify.domain.AlbumType;
 import se.deepthot.playlistbot.spotify.playlist.PlaylistHandler;
+import se.deepthot.playlistbot.spotify.playlist.TrackData;
 import se.deepthot.playlistbot.spotify.search.SearchPlaylist;
 import se.deepthot.playlistbot.spotify.search.SpotifySearch;
 
@@ -37,7 +38,7 @@ public class PopularTracks {
         List<SearchPlaylist> playlists = spotifySearch.searchPlaylist(currentYear + "", limit);
         List<Track> result = playlists.parallelStream()
                 .flatMap(this::loadPlaylistTracks)
-                .map(se.deepthot.playlistbot.spotify.playlist.Tracks.TrackData::getTrack)
+                .map(TrackData::getTrack)
                 .distinct()
                 .filter(t -> t.getPopularity() > 60)
                 .filter(this::hasProperAlbum)
@@ -69,7 +70,7 @@ public class PopularTracks {
         return album.getYear() == currentYear;
     }
 
-    private Stream<se.deepthot.playlistbot.spotify.playlist.Tracks.TrackData> loadPlaylistTracks(SearchPlaylist p) {
+    private Stream<TrackData> loadPlaylistTracks(SearchPlaylist p) {
         return playlistHandler.loadPlaylist(p.getTracksUrl()).getItems().stream().filter(td -> {
             if(td.getTrack() == null){
                 logger.warn("Track was null for playlist {}", p.getTracksUrl());

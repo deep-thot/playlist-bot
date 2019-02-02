@@ -1,7 +1,5 @@
 package se.deepthot.playlistbot.spotify.playlist;
 
-import se.deepthot.playlistbot.spotify.track.Track;
-
 import java.util.Collections;
 import java.util.List;
 
@@ -36,38 +34,6 @@ public class Tracks {
         tracks.setNext("");
         return tracks;
     }
-
-    public static class TrackData {
-        public Track getTrack() {
-            return track;
-        }
-
-        public void setTrack(Track track) {
-            this.track = track;
-        }
-
-        private Track track;
-
-        private List<Artist> artists;
-
-        public List<Artist> getArtists() {
-            return artists;
-        }
-
-        public void setArtists(List<Artist> artists) {
-            this.artists = artists;
-        }
-
-        @Override
-        public String toString() {
-            return "TrackData{" +
-                    "track=" + track.getName() +
-                    ", artists=" + artists +
-                    ", id=" + track.getId() +
-                    '}';
-        }
-    }
-
 
 
     static class Artist {
