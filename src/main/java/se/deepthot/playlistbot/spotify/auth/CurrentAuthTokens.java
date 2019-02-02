@@ -9,7 +9,7 @@ public class CurrentAuthTokens {
     private final String accessToken;
     private final LocalDateTime expires;
 
-    public CurrentAuthTokens(String accessToken, long ttl) {
+    private CurrentAuthTokens(String accessToken, long ttl) {
         this.accessToken = accessToken;
         expires = LocalDateTime.now().plusSeconds(ttl);
     }

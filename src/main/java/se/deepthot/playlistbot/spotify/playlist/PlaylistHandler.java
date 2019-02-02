@@ -45,6 +45,7 @@ public class PlaylistHandler {
     }
 
 
+    @SuppressWarnings("ConstantConditions")
     public void addTrackToPlaylist(String playlistId, String trackId){
         if(trackIdCache.get(playlistId).contains(trackId)){
             logger.info("No new tracks to add. ({} already exist in playlist)", trackId);
@@ -125,6 +126,7 @@ public class PlaylistHandler {
     }
 
     private Map<String, String> getPlaylists() {
+        //noinspection ConstantConditions
         return playlistCache.get("IneedSomekey").stream().distinct().collect(toMap(PlayListResponse::getName, PlayListResponse::getId));
     }
 
