@@ -36,7 +36,7 @@ public class PlaylistAnnouncer {
         this.telegramConfig = telegramConfig;
     }
 
-    @Scheduled(cron = "00 35 22 * * SAT", zone = "Europe/Stockholm")
+    @Scheduled(cron = "00 00 21 * * SUN", zone = "Europe/Stockholm")
     public void newPlaylist(){
         if(playlistHandler.getPlaylistByName(prefixed(getCurrentWeeksPlaylist())) != null){
             logger.info("There is already a playlist for this week. Did someone run this before?");
