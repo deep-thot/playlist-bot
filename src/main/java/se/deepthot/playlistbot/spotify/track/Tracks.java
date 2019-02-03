@@ -34,6 +34,6 @@ public class Tracks {
     }
 
     public AudioFeatures getAudioFeatures(TrackId trackId){
-        return spotifyApi.performGet("audio-features/{trackId}", AudioFeatures.class, trackId.getId()).getBody();
+        return spotifyApi.performGet("audio-features/{trackId}", AudioFeatures.class, "Get track audio features", trackId.getId()).getBody();
     }
 }
