@@ -4,33 +4,69 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class AudioFeatures {
-    private final double acousticness;
-    private final double danceability;
-    private final double duration_ms;
-    private final double energy;
-    private final double instrumentalness;
-    private final int key;
-    private final double liveness;
-    private final double loudness;
-    private final int mode;
-    private final double speechiness;
-    private final double tempo;
-    private final double valence;
-    private final int time_signature;
+    private double acousticness;
+    private double danceability;
+    private double duration_ms;
+    private double energy;
+    private double instrumentalness;
+    private int key;
+    private double liveness;
+    private double loudness;
+    private int mode;
+    private double speechiness;
+    private double tempo;
+    private double valence;
+    private int time_signature;
 
-    public AudioFeatures(double acousticness, double danceability, double duration_ms, double energy, double instrumentalness, int key, double liveness, double loudness, int mode, double speechiness, double tempo, double valence, int time_signature) {
+    public void setAcousticness(double acousticness) {
         this.acousticness = acousticness;
+    }
+
+    public void setDanceability(double danceability) {
         this.danceability = danceability;
+    }
+
+    public void setDuration_ms(double duration_ms) {
         this.duration_ms = duration_ms;
+    }
+
+    public void setEnergy(double energy) {
         this.energy = energy;
+    }
+
+    public void setInstrumentalness(double instrumentalness) {
         this.instrumentalness = instrumentalness;
+    }
+
+    public void setKey(int key) {
         this.key = key;
+    }
+
+    public void setLiveness(double liveness) {
         this.liveness = liveness;
+    }
+
+    public void setLoudness(double loudness) {
         this.loudness = loudness;
+    }
+
+    public void setMode(int mode) {
         this.mode = mode;
+    }
+
+    public void setSpeechiness(double speechiness) {
         this.speechiness = speechiness;
+    }
+
+    public void setTempo(double tempo) {
         this.tempo = tempo;
+    }
+
+    public void setValence(double valence) {
         this.valence = valence;
+    }
+
+    public void setTime_signature(int time_signature) {
         this.time_signature = time_signature;
     }
 
@@ -86,94 +122,5 @@ public class AudioFeatures {
         return time_signature;
     }
     
-    public static Builder newBuilder(){
-        return new Builder();
-    }
 
-
-
-    public static class Builder {
-        private double acousticness;
-        private double danceability;
-        private double duration_ms;
-        private double energy;
-        private double instrumentalness;
-        private int key;
-        private double liveness;
-        private double loudness;
-        private int mode;
-        private double speechiness;
-        private double tempo;
-        private double valence;
-        private int time_signature;
-
-        public Builder withAcousticness(double acousticness) {
-            this.acousticness = acousticness;
-            return this;
-        }
-
-        public Builder withDanceability(double danceability) {
-            this.danceability = danceability;
-            return this;
-        }
-
-        public Builder withDuration_ms(double duration_ms) {
-            this.duration_ms = duration_ms;
-            return this;
-        }
-
-        public Builder withEnergy(double energy) {
-            this.energy = energy;
-            return this;
-        }
-
-        public Builder withInstrumentalness(double instrumentalness) {
-            this.instrumentalness = instrumentalness;
-            return this;
-        }
-
-        public Builder withKey(int key) {
-            this.key = key;
-            return this;
-        }
-
-        public Builder withLiveness(double liveness) {
-            this.liveness = liveness;
-            return this;
-        }
-
-        public Builder withLoudness(double loudness) {
-            this.loudness = loudness;
-            return this;
-        }
-
-        public Builder withMode(int mode) {
-            this.mode = mode;
-            return this;
-        }
-
-        public Builder withSpeechiness(double speechiness) {
-            this.speechiness = speechiness;
-            return this;
-        }
-
-        public Builder withTempo(double tempo) {
-            this.tempo = tempo;
-            return this;
-        }
-
-        public Builder withValence(double valence) {
-            this.valence = valence;
-            return this;
-        }
-
-        public Builder withTime_signature(int time_signature) {
-            this.time_signature = time_signature;
-            return this;
-        }
-
-        public AudioFeatures build(){
-            return new AudioFeatures(acousticness, danceability, duration_ms, energy, instrumentalness, key, liveness, loudness, mode, speechiness, tempo, valence, time_signature);
-        }
-    }
 }
