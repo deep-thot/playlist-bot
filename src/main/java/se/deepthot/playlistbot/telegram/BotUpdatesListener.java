@@ -10,9 +10,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Service;
+import se.deepthot.playlistbot.spotify.TrackId;
 import se.deepthot.playlistbot.spotify.playlist.PlaylistConfig;
 import se.deepthot.playlistbot.spotify.playlist.PlaylistHandler;
 import se.deepthot.playlistbot.spotify.search.TrackGuesser;
+import se.deepthot.playlistbot.spotify.track.AudioFeatures;
+import se.deepthot.playlistbot.spotify.track.TrackClassifier;
+import se.deepthot.playlistbot.spotify.track.TrackType;
+import se.deepthot.playlistbot.spotify.track.Tracks;
 import se.deepthot.playlistbot.theme.WeeklyPlaylist;
 import se.deepthot.playlistbot.youtube.TrackResource;
 
@@ -45,6 +50,7 @@ public class BotUpdatesListener implements UpdatesListener {
     private final UpdateClassifier updateClassifier;
     private final TrackResource trackResource;
     private final TrackGuesser trackGuesser;
+    private final Tracks tracks;
 
     public String getPlaylistId() {
         return playlistId;
@@ -57,12 +63,13 @@ public class BotUpdatesListener implements UpdatesListener {
     private String playlistId;
 
     @Inject
-    public BotUpdatesListener(TelegramBot telegramBot, PlaylistHandler playlistHandler, UpdateClassifier updateClassifier, TrackResource trackResource, TrackGuesser trackGuesser) {
+    public BotUpdatesListener(TelegramBot telegramBot, PlaylistHandler playlistHandler, UpdateClassifier updateClassifier, TrackResource trackResource, TrackGuesser trackGuesser, Tracks tracks) {
         this.telegramBot = telegramBot;
         this.playlistHandler = playlistHandler;
         this.updateClassifier = updateClassifier;
         this.trackResource = trackResource;
         this.trackGuesser = trackGuesser;
+        this.tracks = tracks;
     }
 
     @Override
@@ -116,7 +123,14 @@ public class BotUpdatesListener implements UpdatesListener {
     }
 
     private void addToPlaylists(IncomingMessage m, String trackId) {
-        List<String> playlistNames = Stream.of(filterHashTags(m.getHashTags()), Stream.of(WeeklyPlaylist.getIntraWeekPlaylist()), Stream.of(m.getUserName())).flatMap(identity()).map(PlaylistConfig.PLAYLIST_PREFIX::concat).collect(toList());
+        List<String> playlistNames = Stream.of(
+                filterHashTags(m.getHashTags()),
+                Stream.of(WeeklyPlaylist.getIntraWeekPlaylist()),
+                Stream.of(m.getUserName()),
+                categoryPlaylists(trackId)
+        ).flatMap(identity())
+        .map(PlaylistConfig.PLAYLIST_PREFIX::concat)
+        .collect(toList());
 
         playlistHandler.addTrackToPlaylists(trackId, playlistNames);
 
@@ -126,6 +140,12 @@ public class BotUpdatesListener implements UpdatesListener {
 
     private static Stream<String> filterHashTags(List<String> hashTags) {
         return hashTags.stream().distinct().filter(tag -> playlistHashTagPatterns.stream().anyMatch(tag::matches));
+    }
+
+    private Stream<String> categoryPlaylists(String trackId){
+        AudioFeatures audioFeatures = tracks.getAudioFeatures(TrackId.of(trackId));
+        TrackType trackType = TrackClassifier.classify(audioFeatures);
+        return Stream.of(trackType.getPlaylistName());
     }
 
 

@@ -32,4 +32,8 @@ public class Tracks {
     public Album loadFullAlbum(SimpleAlbum simpleAlbum){
         return spotifyApi.performGet(simpleAlbum.getHref(), Album.class, "Loading album " + simpleAlbum.getName()).getBody();
     }
+
+    public AudioFeatures getAudioFeatures(TrackId trackId){
+        return spotifyApi.performGet("audio-features/{trackId}", AudioFeatures.class, trackId.getId()).getBody();
+    }
 }
