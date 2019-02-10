@@ -10,9 +10,12 @@ import org.springframework.stereotype.Service;
 import se.deepthot.playlistbot.spotify.TrackId;
 import se.deepthot.playlistbot.spotify.playlist.PlaylistConfig;
 import se.deepthot.playlistbot.spotify.playlist.PlaylistHandler;
+import se.deepthot.playlistbot.theme.CountryTheme;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static se.deepthot.playlistbot.theme.WeeklyPlaylist.*;
@@ -38,7 +41,35 @@ public class PlaylistAnnouncer {
 
     @Scheduled(cron = "00 00 21 * * SUN", zone = "Europe/Stockholm")
     public void newPlaylist(){
-        if(playlistHandler.getPlaylistByName(prefixed(getCurrentWeeksPlaylist())) != null){
+        weeklyPlaylist();
+
+        country();
+
+    }
+
+    private void country() {
+        Optional<String> country = getUnusedCountry();
+        if(!country.isPresent()){
+            postMessageToChannel("Nu har vi visst slut på länder att gå igenom...");
+            return;
+        }
+
+        country.ifPresent(c -> {
+            String playlist = playlistHandler.getOrCreatePlaylist(prefixed(c));
+            postMessageToChannel("Och veckans land är... 🥁");
+            postMessageToChannel("#"+c+ " \n\n " + playlistUrl(playlist));
+
+        });
+    }
+
+    private Optional<String> getUnusedCountry(){
+        return Stream.generate(CountryTheme::getRandomCountry)
+                .filter(name -> !playlistHandler.hasPlaylistByName(name))
+                .findFirst();
+    }
+
+    private void weeklyPlaylist() {
+        if(!playlistHandler.hasPlaylistByName(prefixed(getCurrentWeeksPlaylist()))){
             logger.info("There is already a playlist for this week. Did someone run this before?");
             return;
         }

@@ -18,6 +18,7 @@ import se.deepthot.playlistbot.spotify.track.AudioFeatures;
 import se.deepthot.playlistbot.spotify.track.TrackClassifier;
 import se.deepthot.playlistbot.spotify.track.TrackType;
 import se.deepthot.playlistbot.spotify.track.Tracks;
+import se.deepthot.playlistbot.theme.CountryTheme;
 import se.deepthot.playlistbot.theme.WeeklyPlaylist;
 import se.deepthot.playlistbot.youtube.TrackResource;
 
@@ -139,7 +140,7 @@ public class BotUpdatesListener implements UpdatesListener {
     }
 
     private static Stream<String> filterHashTags(List<String> hashTags) {
-        return hashTags.stream().distinct().filter(tag -> playlistHashTagPatterns.stream().anyMatch(tag::matches));
+        return hashTags.stream().distinct().filter(tag -> playlistHashTagPatterns.stream().anyMatch(tag::matches) || CountryTheme.isCountryHashTag(tag));
     }
 
     private Stream<String> categoryPlaylists(String trackId){

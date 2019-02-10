@@ -111,6 +111,10 @@ public class PlaylistHandler {
         return getPlaylists().get(name);
     }
 
+    public boolean hasPlaylistByName(String name){
+        return getPlaylistByName(name) != null;
+    }
+
     public void addTrackToPlaylists(String trackId, List<String> playlistNames){
         logger.info("Adding to playlists {}", playlistNames);
         getOrCreatePlaylists(playlistNames).forEach(id -> addTrackToPlaylist(id, trackId));
