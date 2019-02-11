@@ -40,11 +40,13 @@ public class PlaylistAnnouncer {
     }
 
     @Scheduled(cron = "00 00 21 * * SUN", zone = "Europe/Stockholm")
-    public void newPlaylist(){
+    public void weekSchedule(){
         weeklyPlaylist();
+    }
 
+    @Scheduled(cron = "00 00 06 * * MON", zone = "Europe/Stockholm")
+    public void countrySchedule(){
         country();
-
     }
 
     private void country() {
@@ -69,7 +71,7 @@ public class PlaylistAnnouncer {
     }
 
     private void weeklyPlaylist() {
-        if(!playlistHandler.hasPlaylistByName(prefixed(getCurrentWeeksPlaylist()))){
+        if(playlistHandler.hasPlaylistByName(prefixed(getCurrentWeeksPlaylist()))){
             logger.info("There is already a playlist for this week. Did someone run this before?");
             return;
         }
