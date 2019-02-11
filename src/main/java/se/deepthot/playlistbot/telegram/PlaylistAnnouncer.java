@@ -57,9 +57,8 @@ public class PlaylistAnnouncer {
         }
 
         country.ifPresent(c -> {
-            String playlist = playlistHandler.getOrCreatePlaylist(prefixed(c));
-            postMessageToChannel("Och veckans land är... 🥁");
-            postMessageToChannel("#"+c+ " \n\n " + playlistUrl(playlist));
+            String playlist = playlistHandler.getOrCreatePlaylist(prefixed("#"+c));
+            postMessageToChannel("Och veckans land är... 🥁 \n\n #"+c+ " \n\n " + playlistUrl(playlist));
 
         });
     }
