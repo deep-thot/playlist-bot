@@ -1,6 +1,8 @@
 package se.deepthot.playlistbot.spotify.playlist;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import se.deepthot.playlistbot.spotify.auth.UserResponse;
+import se.deepthot.playlistbot.spotify.domain.ExternalUrls;
 
 /**
  * Created by Eruenion on 2017-03-08.
@@ -10,6 +12,8 @@ public class PlayListResponse {
     private String name;
     private String id;
     private Tracks tracks;
+    private ExternalUrls external_urls;
+    private UserResponse owner;
 
     public String getName() {
         return name;
@@ -48,5 +52,21 @@ public class PlayListResponse {
     @Override
     public int hashCode() {
         return id != null ? id.hashCode() : 0;
+    }
+
+    public ExternalUrls getExternal_urls() {
+        return external_urls;
+    }
+
+    public void setExternal_urls(ExternalUrls external_urls) {
+        this.external_urls = external_urls;
+    }
+
+    public UserResponse getOwner() {
+        return owner;
+    }
+
+    public void setOwner(UserResponse owner) {
+        this.owner = owner;
     }
 }

@@ -1,10 +1,12 @@
 package se.deepthot.playlistbot.spotify.search;
 
+import se.deepthot.playlistbot.spotify.TrackId;
+
 import java.util.List;
 
 public class SearchTrack {
 
-    String getName() {
+    public String getName() {
         return name;
     }
 
@@ -14,15 +16,15 @@ public class SearchTrack {
 
     private String name;
 
-    public String getId() {
+    public TrackId getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(TrackId id) {
         this.id = id;
     }
 
-    private String id;
+    private TrackId id;
 
     private List<TrackSearchResponse.Artist> artists;
 
@@ -33,6 +35,8 @@ public class SearchTrack {
     public void setArtists(List<TrackSearchResponse.Artist> artists) {
         this.artists = artists;
     }
+
+
 
     @Override
     public String toString() {

@@ -10,7 +10,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Service;
+import se.deepthot.playlistbot.spotify.AuthenticationProperties;
 import se.deepthot.playlistbot.spotify.TrackId;
+import se.deepthot.playlistbot.spotify.auth.SpotifyUser;
+import se.deepthot.playlistbot.spotify.playlist.PlayListResponse;
 import se.deepthot.playlistbot.spotify.playlist.PlaylistConfig;
 import se.deepthot.playlistbot.spotify.playlist.PlaylistHandler;
 import se.deepthot.playlistbot.spotify.search.TrackGuesser;
@@ -52,6 +55,8 @@ public class BotUpdatesListener implements UpdatesListener {
     private final TrackResource trackResource;
     private final TrackGuesser trackGuesser;
     private final Tracks tracks;
+    private final LostFmSetup lostFmSetup;
+    private final AuthenticationProperties authenticationProperties;
 
     public String getPlaylistId() {
         return playlistId;
@@ -64,13 +69,15 @@ public class BotUpdatesListener implements UpdatesListener {
     private String playlistId;
 
     @Inject
-    public BotUpdatesListener(TelegramBot telegramBot, PlaylistHandler playlistHandler, UpdateClassifier updateClassifier, TrackResource trackResource, TrackGuesser trackGuesser, Tracks tracks) {
+    public BotUpdatesListener(TelegramBot telegramBot, PlaylistHandler playlistHandler, UpdateClassifier updateClassifier, TrackResource trackResource, TrackGuesser trackGuesser, Tracks tracks, LostFmSetup lostFmSetup, AuthenticationProperties authenticationProperties) {
         this.telegramBot = telegramBot;
         this.playlistHandler = playlistHandler;
         this.updateClassifier = updateClassifier;
         this.trackResource = trackResource;
         this.trackGuesser = trackGuesser;
         this.tracks = tracks;
+        this.lostFmSetup = lostFmSetup;
+        this.authenticationProperties = authenticationProperties;
     }
 
     @Override
@@ -90,25 +97,29 @@ public class BotUpdatesListener implements UpdatesListener {
                         break;
                     }
                     case PLAYLIST_COMMAND: {
-                        String playlist = playlistHandler.getPlaylistByName(PlaylistConfig.PLAYLIST_PREFIX + m.getUserName());
+                        PlayListResponse playlist = playlistHandler.getPlaylistByName(PlaylistConfig.PLAYLIST_PREFIX + m.getUserName(), getUser());
                         String text = getPersonalPLaylist(playlist);
                         telegramBot.execute(new SendMessage(m.getText(), text + "\n\n hela kanalens playlist med _allt_ hittar du på https://open.spotify.com/user/esplaylistbot/playlist/" + playlistId).parseMode(ParseMode.Markdown));
                     }
                 }
             });
-
+        lostFmSetup.handleLostFmSetup(list);
         } catch (Throwable e) {
             logger.error("", e);
         }
         return CONFIRMED_UPDATES_ALL;
     }
 
-    private String getPersonalPLaylist(String playlist) {
+    private SpotifyUser getUser() {
+        return authenticationProperties.user();
+    }
+
+    private String getPersonalPLaylist(PlayListResponse playlist) {
         String text;
         if(playlist == null){
             text = "Du har ingen playlist än. Skicka några youtube eller spotify-länkar till mig först.";
         } else {
-            text = "Din playlist hittar du på https://open.spotify.com/user/esplaylistbot/playlist/" + playlist;
+            text = "Din playlist hittar du på " + playlist.getExternal_urls().getSpotify();
         }
         return text;
     }
@@ -133,7 +144,7 @@ public class BotUpdatesListener implements UpdatesListener {
         .map(PlaylistConfig.PLAYLIST_PREFIX::concat)
         .collect(toList());
 
-        playlistHandler.addTrackToPlaylists(trackId, playlistNames);
+        playlistHandler.addTrackToPlaylists(trackId, playlistNames, getUser());
 
 
         addTrack(trackId, playlistId);
@@ -144,14 +155,14 @@ public class BotUpdatesListener implements UpdatesListener {
     }
 
     private Stream<String> categoryPlaylists(String trackId){
-        AudioFeatures audioFeatures = tracks.getAudioFeatures(TrackId.of(trackId));
+        AudioFeatures audioFeatures = tracks.getAudioFeatures(TrackId.of(trackId), getUser().getAuthSession());
         TrackType trackType = TrackClassifier.classify(audioFeatures);
         return Stream.of(trackType.getPlaylistName());
     }
 
 
     private void addTrack(String trackId, String playListId) {
-        playlistHandler.addTrackToPlaylist(playListId, trackId);
+        playlistHandler.addTrackToPlaylist(playListId, trackId, getUser());
     }
 
     private String extractYoutubeId(String text){

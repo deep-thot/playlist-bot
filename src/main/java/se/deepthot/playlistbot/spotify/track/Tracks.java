@@ -4,6 +4,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import se.deepthot.playlistbot.spotify.SpotifyApi;
 import se.deepthot.playlistbot.spotify.TrackId;
+import se.deepthot.playlistbot.spotify.auth.AuthSession;
 import se.deepthot.playlistbot.spotify.domain.Album;
 import se.deepthot.playlistbot.spotify.domain.SimpleAlbum;
 
@@ -23,17 +24,17 @@ public class Tracks {
         this.spotifyApi = spotifyApi;
     }
 
-    public List<Track> loadTracks(List<TrackId> trackIds){
+    public List<Track> loadTracks(List<TrackId> trackIds, AuthSession authSession){
         String trackIdParam = trackIds.stream().map(TrackId::getId).collect(joining(","));
-        ResponseEntity<TracksResponse> response = spotifyApi.performGet("tracks?ids=" + trackIdParam, TracksResponse.class, "track ids " + trackIdParam);
+        ResponseEntity<TracksResponse> response = spotifyApi.performGet("tracks?ids=" + trackIdParam, TracksResponse.class, "track ids " + trackIdParam, authSession);
         return Optional.ofNullable(response.getBody()).map(TracksResponse::getTracks).orElse(emptyList());
     }
 
-    public Album loadFullAlbum(SimpleAlbum simpleAlbum){
-        return spotifyApi.performGet(simpleAlbum.getHref(), Album.class, "Loading album " + simpleAlbum.getName()).getBody();
+    public Album loadFullAlbum(SimpleAlbum simpleAlbum, AuthSession authSession){
+        return spotifyApi.performGet(simpleAlbum.getHref(), Album.class, "Loading album " + simpleAlbum.getName(), authSession).getBody();
     }
 
-    public AudioFeatures getAudioFeatures(TrackId trackId){
-        return spotifyApi.performGet("audio-features/{trackId}", AudioFeatures.class, "Get track audio features", trackId.getId()).getBody();
+    public AudioFeatures getAudioFeatures(TrackId trackId, AuthSession authSession){
+        return spotifyApi.performGet("audio-features/{trackId}", AudioFeatures.class, "Get track audio features", authSession, trackId.getId()).getBody();
     }
 }

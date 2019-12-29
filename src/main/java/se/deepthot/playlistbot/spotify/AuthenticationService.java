@@ -27,36 +27,59 @@ public class AuthenticationService {
     private final AuthenticationProperties authenticationProperties;
     private final RestTemplate restTemplate;
 
-    private CurrentAuthTokens currentAuthTokens;
 
     @Inject
     public AuthenticationService(AuthenticationProperties authenticationProperties, RestTemplate restTemplate) {
         this.authenticationProperties = authenticationProperties;
         this.restTemplate = restTemplate;
-        currentAuthTokens = CurrentAuthTokens.empty();
     }
 
-    public String getAuthHeader() {
-        return "Bearer " + getCurrentAuthToken();
+    public String getAuthHeader(AuthSession authSession) {
+       return "Bearer " + getAuthToken(authSession);
     }
 
-    private String getCurrentAuthToken() {
-        if (!currentAuthTokens.isExpired()) {
-            return currentAuthTokens.getAccessToken();
+    private String getAuthToken(AuthSession session){
+        if(session.isExpired()){
+            return refreshAuthToken(session).getAccessToken();
         }
-        currentAuthTokens = refreshAuthToken();
-        return currentAuthTokens.getAccessToken();
+        return session.getAccessToken();
     }
 
-    private CurrentAuthTokens refreshAuthToken() {
+    private AuthSession refreshAuthToken(AuthSession session){
+        ResponseEntity<RefreshTokenResponse> response = getRefreshToken(session.getRefreshToken());
+        RefreshTokenResponse body = response.getBody();
+        return AuthSessions.put(AuthSession.fromRefreshTokenResponse(body, session.getRefreshToken()));
+    }
+
+    private ResponseEntity<RefreshTokenResponse> getRefreshToken(String refreshToken) {
         LinkedMultiValueMap<String, Object> form = new LinkedMultiValueMap<>();
         form.add("grant_type", "refresh_token");
-        form.add("refresh_token", authenticationProperties.getRefreshToken());
-        ResponseEntity<RefreshTokenResponse> response = restTemplate.exchange(createTokenRequest().body(form), RefreshTokenResponse.class);
+        form.add("refresh_token", refreshToken);
+        return getTokenResponse(form, RefreshTokenResponse.class);
+    }
+
+    private <T> ResponseEntity<T> getTokenResponse(LinkedMultiValueMap<String, Object> form, Class<T> responseClass) {
+        ResponseEntity<T> response = restTemplate.exchange(createTokenRequest().body(form), responseClass);
         if(!response.getStatusCode().is2xxSuccessful()){
             throw new RuntimeException("Couldn't refresh auth token: " + response.getStatusCode().getReasonPhrase());
         }
-        return currentAuthTokens.newAccessToken(response.getBody().getAccess_token(), response.getBody().getExpires_in());
+        return response;
+    }
+
+    public SpotifyUser getAuthAndRefreshToken(String authCode){
+        LinkedMultiValueMap<String, Object> form = new LinkedMultiValueMap<>();
+        form.add("grant_type", "authorization_code");
+        form.add("code", authCode);
+        form.add("redirect_uri", authenticationProperties.getRedirectUri());
+
+        ResponseEntity<AuthTokenResponse> response = getTokenResponse(form, AuthTokenResponse.class);
+        AuthSession session = AuthSessions.put(AuthSession.fromTokenResponse(response.getBody()));
+        return getUser(session);
+    }
+
+    public SpotifyUser getUser(AuthSession session){
+        ResponseEntity<UserResponse> user = restTemplate.exchange(RequestEntity.get(URI.create("https://api.spotify.com/v1/me")).header("Authorization", getAuthHeader(session)).build(), UserResponse.class);
+        return new SpotifyUser(user.getBody().getId(), session.getRefreshToken());
     }
 
     private RequestEntity.BodyBuilder createTokenRequest() {

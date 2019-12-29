@@ -9,14 +9,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import se.deepthot.playlistbot.spotify.SpotifyApi;
 import se.deepthot.playlistbot.spotify.TrackId;
+import se.deepthot.playlistbot.spotify.auth.AuthSession;
+import se.deepthot.playlistbot.spotify.auth.SpotifyUser;
 import se.deepthot.playlistbot.spotify.track.Track;
 
 import javax.inject.Inject;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -32,33 +32,34 @@ public class PlaylistHandler {
 
 
     private static final Logger logger = LoggerFactory.getLogger(PlaylistHandler.class);
-    private final LoadingCache<String, List<PlayListResponse>> playlistCache;
-    private final LoadingCache<String, Set<String>> trackIdCache;
+    private final LoadingCache<SpotifyUser, List<PlayListResponse>> playlistCache;
+    private final LoadingCache<PlaylistAndUser, Set<String>> trackIdCache;
     private final SpotifyApi spotifyApi;
 
 
     @Inject
     public PlaylistHandler(SpotifyApi spotifyApi) {
         this.spotifyApi = spotifyApi;
-        this.playlistCache = Caffeine.newBuilder().expireAfterWrite(2, TimeUnit.HOURS).build(s -> listPlayLists());
+        this.playlistCache = Caffeine.newBuilder().expireAfterWrite(2, TimeUnit.HOURS).build(this::listPlayLists);
         trackIdCache = Caffeine.newBuilder().expireAfterWrite(2, TimeUnit.HOURS).build(this::getAllTracks);
     }
 
 
     @SuppressWarnings("ConstantConditions")
-    public void addTrackToPlaylist(String playlistId, String trackId){
-        if(trackIdCache.get(playlistId).contains(trackId)){
+    public void addTrackToPlaylist(String playlistId, String trackId, SpotifyUser user){
+        PlaylistAndUser playlistAndUser = new PlaylistAndUser(playlistId, user);
+        if(trackIdCache.get(playlistAndUser).contains(trackId)){
             logger.info("No new tracks to add. ({} already exist in playlist)", trackId);
             return;
         }
-        spotifyApi.performPost("users/esplaylistbot/playlists/{playlistId}/tracks", new AddTracksRequest(singletonList(TrackId.of(trackId).getSpotifyUrl())), AddTracksResponse.class, "Add track " + trackId + " to playlist " + playlistId, playlistId);
+        spotifyApi.performPost("users/{user}/playlists/{playlistId}/tracks", new AddTracksRequest(singletonList(TrackId.of(trackId).getSpotifyUrl())), AddTracksResponse.class, "Add track " + trackId + " to playlist " + playlistId, user.getAuthSession(), user.getUsername(), playlistId);
         logger.info("Added track {}", trackId);
-        trackIdCache.get(playlistId).add(trackId);
+        trackIdCache.get(playlistAndUser).add(trackId);
 
     }
 
-    private PlayListResponse createPlaylist(String name){
-        ResponseEntity<PlayListResponse> result = spotifyApi.performPost("users/esplaylistbot/playlists", new CreatePlaylistRequest(name, true), PlayListResponse.class, "Create playlist " + name);
+    private PlayListResponse createPlaylist(String name, SpotifyUser user){
+        ResponseEntity<PlayListResponse> result = spotifyApi.performPost("users/{user}/playlists", new CreatePlaylistRequest(name, true), PlayListResponse.class, "Create playlist " + name, user.getAuthSession(), user.getUsername());
         PlayListResponse body = verifyResult(result).getBody();
         logger.info("Created new playlist \"{}\" ({})", body.getName(), body.getId());
         playlistCache.invalidateAll();
@@ -70,17 +71,17 @@ public class PlaylistHandler {
         return tracks.stream().map(TrackData::getTrack).map(Track::getId).collect(toSet());
     }
 
-    private Set<String> getAllTracks(String playlistId){
-        List<TrackData> result = getTrackData(playlistId);
+    private Set<String> getAllTracks(PlaylistAndUser playlistAndUser){
+        List<TrackData> result = getTrackData(playlistAndUser.getPlaylistId(), playlistAndUser.getAuthSession());
         return getTrackIds(result);
     }
 
-    private List<TrackData> getTrackData(String playlistId) {
-        PlayListResponse playlist = getPlaylist(playlistId);
+    private List<TrackData> getTrackData(String playlistId, SpotifyUser user) {
+        PlayListResponse playlist = getPlaylist(playlistId, user);
         String next = playlist.getTracks().getNext();
         List<TrackData> result = playlist.getTracks().getItems();
         while(next != null){
-            Tracks response = spotifyApi.performGet(next, Tracks.class, "Loading tracks for " + playlistId).getBody();
+            Tracks response = spotifyApi.performGet(next, Tracks.class, "Loading tracks for " + playlistId, user.getAuthSession()).getBody();
             result.addAll(response.getItems());
             next = response.getNext();
         }
@@ -88,14 +89,14 @@ public class PlaylistHandler {
     }
 
 
-    private PlayListResponse getPlaylist(String playlistId){
-        ResponseEntity<PlayListResponse> result = spotifyApi.performGet("users/esplaylistbot/playlists/" + playlistId, PlayListResponse.class, "loading playlist " + playlistId);
+    private PlayListResponse getPlaylist(String playlistId, SpotifyUser user){
+        ResponseEntity<PlayListResponse> result = spotifyApi.performGet("users/{user}/playlists/" + playlistId, PlayListResponse.class, "loading playlist " + playlistId, user.getAuthSession(), user.getUsername());
 
         return verifyResult(result).getBody();
     }
 
-    public Tracks loadPlaylist(String url){
-        ResponseEntity<Tracks> result = spotifyApi.performGet(url, Tracks.class, "loading playlist from " + url);
+    public Tracks loadPlaylist(String url, AuthSession authSession){
+        ResponseEntity<Tracks> result = spotifyApi.performGet(url, Tracks.class, "loading playlist from " + url, authSession);
         if(result.getStatusCode() == HttpStatus.NOT_FOUND){
             logger.warn("Playlist at {} not found", url);
             return Tracks.empty();
@@ -103,57 +104,63 @@ public class PlaylistHandler {
         return verifyResult(result).getBody();
     }
 
-    public List<TrackId> getTracksOfPlaylist(String playlistId){
-        return getTrackData(playlistId).stream().map(td -> td.getTrack().getId()).map(TrackId::of).collect(Collectors.toList());
+    public List<TrackId> getTracksOfPlaylist(String playlistId, SpotifyUser user){
+        return getTrackData(playlistId, user).stream().map(td -> td.getTrack().getId()).map(TrackId::of).collect(Collectors.toList());
     }
 
-    public String getPlaylistByName(String name){
-        return getPlaylists().get(name);
+    public PlayListResponse getPlaylistByName(String name, SpotifyUser user){
+        return getPlaylists(user).get(name);
     }
 
-    public boolean hasPlaylistByName(String name){
-        return getPlaylistByName(name) != null;
+    public boolean hasPlaylistByName(String name, SpotifyUser user){
+        return getPlaylistByName(name, user) != null;
     }
 
-    public void addTrackToPlaylists(String trackId, List<String> playlistNames){
+    public void addTrackToPlaylists(String trackId, List<String> playlistNames, SpotifyUser user){
         logger.info("Adding to playlists {}", playlistNames);
-        getOrCreatePlaylists(playlistNames).forEach(id -> addTrackToPlaylist(id, trackId));
+        getOrCreatePlaylists(playlistNames, user).forEach(id -> addTrackToPlaylist(id, trackId, user));
     }
 
-    private Stream<String> getOrCreatePlaylists(List<String> playlistNames) {
-        return playlistNames.stream().map(this::getOrCreatePlaylist);
+    private Stream<String> getOrCreatePlaylists(List<String> playlistNames, SpotifyUser user) {
+        return playlistNames.stream().map(name -> getOrCreatePlaylist(name, user).getId());
     }
 
-    public String getOrCreatePlaylist(String name) {
-        Map<String, String> playlistMap = getPlaylists();
-        return playlistMap.computeIfAbsent(name,  n-> createPlaylist(n).getId());
+    public PlayListResponse getOrCreatePlaylist(String name, SpotifyUser user) {
+        Map<String, PlayListResponse> playlistMap = getPlaylists(user);
+        return playlistMap.computeIfAbsent(name,  n-> createPlaylist(n, user));
     }
 
-    private Map<String, String> getPlaylists() {
+    private Map<String, PlayListResponse> getPlaylists(SpotifyUser user) {
         //noinspection ConstantConditions
-        return playlistCache.get("IneedSomekey").stream().distinct().collect(toMap(PlayListResponse::getName, PlayListResponse::getId));
+        return playlistCache.get(user).stream().filter(playlist -> playlist.getOwner().getId().equals(user.getUsername())).distinct().collect(toMap(PlayListResponse::getName, Function.identity(), (r1, r2) -> {
+            logger.info("Found duplicate playlists named {}: ({} and {}), using {}", r1.getName(), r1.getId(), r2.getId(), r1.getId());
+            return r1;
+        }));
     }
 
-    private List<PlayListResponse> listPlayLists(){
-        PlaylistListResponse list = spotifyApi.performGet("users/esplaylistbot/playlists", PlaylistListResponse.class, "Initial get all playlists").getBody();
+    private List<PlayListResponse> listPlayLists(SpotifyUser user){
+        PlaylistListResponse list = spotifyApi.performGet("users/{user}/playlists", PlaylistListResponse.class, "Initial get all playlists", user.getAuthSession(), user.getUsername()).getBody();
         List<PlayListResponse> result = list.getItems();
         String next = list.getNext();
         while(next != null){
-            PlaylistListResponse playlistList = spotifyApi.performGet(next, PlaylistListResponse.class, "Getting all playlists (contd.)").getBody();
+            PlaylistListResponse playlistList = spotifyApi.performGet(next, PlaylistListResponse.class, "Getting all playlists (contd.)", user.getAuthSession()).getBody();
             result.addAll(playlistList.getItems());
             next = playlistList.getNext();
         }
         return result;
     }
 
-    public void renamePlaylist(String playlistId, String newName){
-        spotifyApi.performPut("playlists/" + playlistId, new EditPlaylistRequest(newName), ExpectedEmptyResponse.class, "Editing playlist");
+    public void renamePlaylist(String playlistId, String newName, AuthSession authSession){
+        spotifyApi.performPut("playlists/" + playlistId, new EditPlaylistRequest(newName), ExpectedEmptyResponse.class, "Editing playlist", authSession);
         playlistCache.invalidateAll();
     }
 
-    public void replaceTracks(String playlistId, List<String> trackUris){
-        spotifyApi.performPut("playlists/{playlistId}/tracks", new ReplaceTracksRequest(trackUris), ExpectedEmptyResponse.class, "Replacing tracks of playlist", playlistId);
-        trackIdCache.put(playlistId, new HashSet<>(trackUris));
+    public void replaceTracks(String playlistId, List<String> trackUris, SpotifyUser user){
+        ResponseEntity<ExpectedEmptyResponse> response = spotifyApi.performPut("playlists/{playlistId}/tracks", new ReplaceTracksRequest(trackUris), ExpectedEmptyResponse.class, "Replacing tracks of playlist", user.getAuthSession(), playlistId);
+        if(!response.getStatusCode().is2xxSuccessful()){
+            throw new RuntimeException("Failed operation: " + response.getStatusCode());
+        }
+        trackIdCache.put(new PlaylistAndUser(playlistId, user), new HashSet<>(trackUris));
     }
 
 
@@ -163,6 +170,38 @@ public class PlaylistHandler {
             throw new RuntimeException("Unable to get playlist: " + result.getStatusCode().getReasonPhrase());
         }
         return result;
+    }
+
+    private static class PlaylistAndUser {
+        private final String playlistId;
+        private final SpotifyUser user;
+
+        private PlaylistAndUser(String playlistId, SpotifyUser user) {
+            this.playlistId = playlistId;
+            this.user = user;
+        }
+
+        public String getPlaylistId() {
+            return playlistId;
+        }
+
+        public SpotifyUser getAuthSession() {
+            return user;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            PlaylistAndUser that = (PlaylistAndUser) o;
+            return Objects.equals(playlistId, that.playlistId) &&
+                    Objects.equals(user, that.user);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(playlistId, user);
+        }
     }
 
 

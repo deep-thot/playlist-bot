@@ -3,6 +3,9 @@ package se.deepthot.playlistbot.spotify.track;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import se.deepthot.playlistbot.spotify.AuthenticationProperties;
+import se.deepthot.playlistbot.spotify.auth.AuthSession;
+import se.deepthot.playlistbot.spotify.auth.AuthSessions;
 import se.deepthot.playlistbot.spotify.domain.Album;
 import se.deepthot.playlistbot.spotify.domain.AlbumType;
 import se.deepthot.playlistbot.spotify.playlist.PlaylistHandler;
@@ -25,17 +28,19 @@ public class PopularTracks {
     private final SpotifySearch spotifySearch;
     private final PlaylistHandler playlistHandler;
     private final Tracks tracks;
+    private final AuthenticationProperties authenticationProperties;
 
-    public PopularTracks(SpotifySearch spotifySearch, PlaylistHandler playlistHandler, Tracks tracks) {
+    public PopularTracks(SpotifySearch spotifySearch, PlaylistHandler playlistHandler, Tracks tracks, AuthenticationProperties authenticationProperties) {
         this.spotifySearch = spotifySearch;
         this.playlistHandler = playlistHandler;
         this.tracks = tracks;
+        this.authenticationProperties = authenticationProperties;
     }
 
     public List<Track> findPopularTracks(Integer currentYear, int limit){
         AtomicInteger count = new AtomicInteger(0);
         long start = System.currentTimeMillis();
-        List<SearchPlaylist> playlists = spotifySearch.searchPlaylist(currentYear + "", limit);
+        List<SearchPlaylist> playlists = spotifySearch.searchPlaylist(currentYear + "", limit, getAuthSession());
         List<Track> result = playlists.parallelStream()
                 .flatMap(this::loadPlaylistTracks)
                 .map(TrackData::getTrack)
@@ -53,6 +58,10 @@ public class PopularTracks {
         return result;
     }
 
+    private AuthSession getAuthSession() {
+        return AuthSessions.get(authenticationProperties.getRefreshToken());
+    }
+
     private boolean hasProperAlbum(Track t) {
         return t.getAlbum().getId() != null;
     }
@@ -66,12 +75,12 @@ public class PopularTracks {
             logger.warn("Track {} had no album!", t);
             return false;
         }
-        Album album = tracks.loadFullAlbum(t.getAlbum());
+        Album album = tracks.loadFullAlbum(t.getAlbum(), getAuthSession());
         return album.getYear() == currentYear;
     }
 
     private Stream<TrackData> loadPlaylistTracks(SearchPlaylist p) {
-        return playlistHandler.loadPlaylist(p.getTracksUrl()).getItems().stream().filter(td -> {
+        return playlistHandler.loadPlaylist(p.getTracksUrl(), getAuthSession()).getItems().stream().filter(td -> {
             if(td.getTrack() == null){
                 logger.warn("Track was null for playlist {}", p.getTracksUrl());
                 return false;
