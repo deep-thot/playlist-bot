@@ -98,7 +98,7 @@ public class PlaylistHandler {
     public Tracks loadPlaylist(String url, AuthSession authSession){
         ResponseEntity<Tracks> result = spotifyApi.performGet(url, Tracks.class, "loading playlist from " + url, authSession);
         if(result.getStatusCode() == HttpStatus.NOT_FOUND){
-            logger.warn("Playlist at {} not found", url);
+            logger.error("Playlist at {} not found", url);
             return Tracks.empty();
         }
         return verifyResult(result).getBody();

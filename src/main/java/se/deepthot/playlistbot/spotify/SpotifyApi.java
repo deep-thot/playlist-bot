@@ -69,7 +69,7 @@ public class SpotifyApi {
                 Optional<Integer> retryInSeconds = e.getResponseHeaders().getOrDefault("Retry-After", emptyList()).stream().findFirst().map(Integer::parseInt);
                 return retryInSeconds.map(retry -> retry(exchange, retry)).orElse(new ResponseEntity<>(e.getStatusCode()));
             } else {
-                logger.warn("Request {} returned status {}: {}. Headers: {}", title, e.getStatusCode(), e.getResponseBodyAsString(), e.getResponseHeaders());
+                logger.error("Request {} returned status {}: {}. Headers: {}", title, e.getStatusCode(), e.getResponseBodyAsString(), e.getResponseHeaders());
                 return new ResponseEntity<>(e.getStatusCode());
             }
         } catch(HttpServerErrorException e) {
@@ -77,7 +77,7 @@ public class SpotifyApi {
             return retry(exchange, 1);
         }
         catch(Exception e){
-            logger.warn("Error performing {}", title);
+            logger.error("Error performing {}", title);
             throw new RuntimeException(e);
         }
     }

@@ -22,7 +22,7 @@ public class LostFmRefresh {
 
     @Scheduled(cron = "00 00 06 * * *", zone = "Europe/Stockholm")
     public void syncAll(){
-        syncRepository.findAllBySpotifyRefreshTokenNotNull().forEach(config -> lostFmService.generateLostFmPlaylist(config, r -> {}, e -> logger.warn("Error refreshing config for user {}", config.getTelegramId(), e)));
+        syncRepository.findAllBySpotifyRefreshTokenNotNull().forEach(config -> lostFmService.generateLostFmPlaylist(config, r -> {}, e -> logger.error("Error refreshing config for user {}", config.getTelegramId(), e)));
     }
 
 
