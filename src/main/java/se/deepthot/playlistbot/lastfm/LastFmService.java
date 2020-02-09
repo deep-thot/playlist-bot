@@ -63,9 +63,14 @@ public class LastFmService {
             }
             for(de.umass.lastfm.Track t: recentTracks.getPageResults()){
                 if(t.getUrl().equals(track.getUrl())){
-                    return Optional.of(convert(t.getPlayedWhen()));
+                    return Optional.ofNullable(t.getPlayedWhen()).map(this::convert);
                 }
-                lastSeenDate = convert(t.getPlayedWhen());
+                if(t.getPlayedWhen() != null) {
+                    lastSeenDate = convert(t.getPlayedWhen());
+                } else {
+                    logger.warn("Track {} did not contain a played date!", track);
+                }
+
             }
             totalPages = recentTracks.getTotalPages();
             currentPage++;
@@ -74,9 +79,19 @@ public class LastFmService {
         return Optional.empty();
     }
 
-    private PaginatedResult<de.umass.lastfm.Track> getRecentTracks(UserPage userPage) {
-        return User.getRecentTracks(userPage.getUser(), userPage.getPage(), 200, apiToken);
+    private PaginatedResult<de.umass.lastfm.Track> getRecentTracks(UserPage userPage, int... nbrAttempts) {
+        PaginatedResult<de.umass.lastfm.Track> response = User.getRecentTracks(userPage.getUser(), userPage.getPage(), 200, apiToken);
+        if(response.getTotalPages() == 0) {
+            logger.warn("Empty response. Will retry");
+            if(nbrAttempts.length > 0 && nbrAttempts[0] > 5) {
+                throw new RuntimeException("Failed to fetch recent tracks at least five times, giving up.");
+            }
+            return getRecentTracks(userPage, Arrays.stream(nbrAttempts).findFirst().orElse(0) + 1);
+        }
+        return response;
     }
+
+
 
     private LocalDateTime convert(Date playedWhen) {
         return playedWhen.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
