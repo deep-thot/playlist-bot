@@ -48,7 +48,7 @@ public class TrackSearchResponse {
         }
     }
 
-    static class Artist {
+    public static class Artist {
         private String name;
 
         String getName() {

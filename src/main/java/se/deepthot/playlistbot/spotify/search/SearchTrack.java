@@ -28,8 +28,12 @@ public class SearchTrack {
 
     private List<TrackSearchResponse.Artist> artists;
 
-    List<TrackSearchResponse.Artist> getArtists() {
+    public List<TrackSearchResponse.Artist> getArtists() {
         return artists;
+    }
+
+    public boolean hasAstist(String artist) {
+        return artists.stream().anyMatch(a -> a.getName().equalsIgnoreCase(artist));
     }
 
     public void setArtists(List<TrackSearchResponse.Artist> artists) {

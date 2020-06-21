@@ -47,6 +47,7 @@ public class LostFmService {
                                 spotifySearch.searchTracks(String.format("artist:%s track:%s", queryParam(track.getArtist()), queryParam(track.getName())), spotifyUser.getAuthSession())
                                         .stream()
                                         .filter(st -> st.getName().toLowerCase().equals(track.getName().toLowerCase()))
+                                        .filter(st -> st.hasAstist(track.getArtist()))
                                         .findFirst()
                         ).filter(Optional::isPresent)
                         .map(Optional::get)
