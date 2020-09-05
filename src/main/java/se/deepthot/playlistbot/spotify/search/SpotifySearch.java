@@ -10,6 +10,10 @@ import se.deepthot.playlistbot.spotify.auth.AuthSession;
 import javax.inject.Inject;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.toList;
 
 @Service
 public class SpotifySearch {
@@ -24,14 +28,19 @@ public class SpotifySearch {
     }
 
     public List<SearchTrack> searchTracks(String query, AuthSession authSession){
-        ResponseEntity<TrackSearchResponse> result = spotifyApi.performGet("search?type=track&q={query}", TrackSearchResponse.class, "Search " + query, authSession, query);
-        TrackSearchResponse response = result.getBody();
-        if(response == null){
+        ResponseEntity<TrackSearchResponse> response = spotifyApi.performGet("search?type=track&q={query}", TrackSearchResponse.class, "Search " + query, authSession, query);
+        TrackSearchResponse trackResponse = response.getBody();
+        if(trackResponse == null){
             return Collections.emptyList();
         }
-        TrackSearchResponse.Tracks tracks = response.getTracks();
-        logger.info("Found {} potential matches: {} ({})", tracks.getItems().size(), tracks.getItems(), tracks.getHref());
-        return tracks.getItems();
+        TrackSearchResponse.Tracks tracks = trackResponse.getTracks();
+        List<SearchTrack> result = getItems(tracks);
+        logger.info("Found {} potential matches: {} ({})", result.size(), result, tracks.getHref());
+        return result;
+    }
+
+    private List<SearchTrack> getItems(TrackSearchResponse.Tracks tracks) {
+        return tracks.getItems().stream().filter(Objects::nonNull).collect(toList());
     }
 
     public List<SearchPlaylist> searchPlaylist(String query, int limit, AuthSession authSession){
